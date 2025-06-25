@@ -577,6 +577,17 @@ onmessage = (event) => {
                         if ("whatsAppTemplateId" in campaign) {
                             processWhatsAppTemplate(campaign.whatsAppTemplateId);
                         }
+
+                        postEvent(
+                            "success",
+                            nccLocation,
+                            nccToken,
+                            "normal",
+                            "exportcampaign",
+                            `Export of campaign ${campaign.name} completed.`,
+                            "Export Campaign Completed",
+                            username
+                        );
                     } else {
                         postMessage(`[ERROR] Campaign with ID "${campaignId}" not found.`);
                     }
@@ -661,17 +672,6 @@ onmessage = (event) => {
 
     const endTime = performance.now();
     const durationMs = endTime - startTime;
-
-    postEvent(
-        "success",
-        nccLocation,
-        nccToken,
-        "normal",
-        "exportcampaign",
-        `Export of campaign with ID ${campaignId} completed.`,
-        "Export Campaign Completed",
-        username
-    );
 
     postMessage(`[INFO] Script complete.`);
     postMessage(`[INFO] Duration: ${formatDuration(durationMs)}`);
