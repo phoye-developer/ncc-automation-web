@@ -21,7 +21,7 @@ function postEvent(
 
     var xhr = new XMLHttpRequest();
 
-    xhr.open("POST", `http://localhost/ncc-automation-web/admin/api/create_event.php`, false);
+    xhr.open("POST", `https://enterprise-demos.com/admin/api/create_event.php`, false);
     xhr.setRequestHeader("Content-Type", "application/json");
 
     try {
