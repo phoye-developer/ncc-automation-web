@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 Author: Nextiva, Inc.
-Product Name: Nextiva Automation Tool Version: 0.1.0-beta
+Product Name: Nextiva Automation Tool Version: 1.0.0
 Website: https://www.nextiva.com
 Contact: phoye@nextiva.com
 -->
