@@ -32190,6 +32190,266 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const applyListFormat = (editor, listName, styleValue) => {
+      const cmd = listName === 'UL' ? 'InsertUnorderedList' : 'InsertOrderedList';
+      editor.execCommand(cmd, false, styleValue === false ? null : { 'list-style-type': styleValue });
+    };
+
+    const register$2 = editor => {
+      editor.addCommand('ApplyUnorderedListStyle', (ui, value) => {
+        applyListFormat(editor, 'UL', value['list-style-type']);
+      });
+      editor.addCommand('ApplyOrderedListStyle', (ui, value) => {
+        applyListFormat(editor, 'OL', value['list-style-type']);
+      });
+    };
+
+    const option = name => editor => editor.options.get(name);
+    const register$1 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('advlist_number_styles', {
+        processor: 'string[]',
+        default: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman'.split(',')
+      });
+      registerOption('advlist_bullet_styles', {
+        processor: 'string[]',
+        default: 'default,circle,square'.split(',')
+      });
+    };
+    const getNumberStyles = option('advlist_number_styles');
+    const getBulletStyles = option('advlist_bullet_styles');
+
+    const isNullable = a => a === null || a === undefined;
+    const isNonNullable = a => !isNullable(a);
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    class Optional {
+      constructor(tag, value) {
+        this.tag = tag;
+        this.value = value;
+      }
+      static some(value) {
+        return new Optional(true, value);
+      }
+      static none() {
+        return Optional.singletonNone;
+      }
+      fold(onNone, onSome) {
+        if (this.tag) {
+          return onSome(this.value);
+        } else {
+          return onNone();
+        }
+      }
+      isSome() {
+        return this.tag;
+      }
+      isNone() {
+        return !this.tag;
+      }
+      map(mapper) {
+        if (this.tag) {
+          return Optional.some(mapper(this.value));
+        } else {
+          return Optional.none();
+        }
+      }
+      bind(binder) {
+        if (this.tag) {
+          return binder(this.value);
+        } else {
+          return Optional.none();
+        }
+      }
+      exists(predicate) {
+        return this.tag && predicate(this.value);
+      }
+      forall(predicate) {
+        return !this.tag || predicate(this.value);
+      }
+      filter(predicate) {
+        if (!this.tag || predicate(this.value)) {
+          return this;
+        } else {
+          return Optional.none();
+        }
+      }
+      getOr(replacement) {
+        return this.tag ? this.value : replacement;
+      }
+      or(replacement) {
+        return this.tag ? this : replacement;
+      }
+      getOrThunk(thunk) {
+        return this.tag ? this.value : thunk();
+      }
+      orThunk(thunk) {
+        return this.tag ? this : thunk();
+      }
+      getOrDie(message) {
+        if (!this.tag) {
+          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+        } else {
+          return this.value;
+        }
+      }
+      static from(value) {
+        return isNonNullable(value) ? Optional.some(value) : Optional.none();
+      }
+      getOrNull() {
+        return this.tag ? this.value : null;
+      }
+      getOrUndefined() {
+        return this.value;
+      }
+      each(worker) {
+        if (this.tag) {
+          worker(this.value);
+        }
+      }
+      toArray() {
+        return this.tag ? [this.value] : [];
+      }
+      toString() {
+        return this.tag ? `some(${ this.value })` : 'none()';
+      }
+    }
+    Optional.singletonNone = new Optional(false);
+
+    const findUntil = (xs, pred, until) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        if (pred(x, i)) {
+          return Optional.some(x);
+        } else if (until(x, i)) {
+          break;
+        }
+      }
+      return Optional.none();
+    };
+
+    const isCustomList = list => /\btox\-/.test(list.className);
+    const isChildOfBody = (editor, elm) => {
+      return editor.dom.isChildOf(elm, editor.getBody());
+    };
+    const matchNodeNames = regex => node => isNonNullable(node) && regex.test(node.nodeName);
+    const isListNode = matchNodeNames(/^(OL|UL|DL)$/);
+    const isTableCellNode = matchNodeNames(/^(TH|TD)$/);
+    const inList = (editor, parents, nodeName) => findUntil(parents, parent => isListNode(parent) && !isCustomList(parent), isTableCellNode).exists(list => list.nodeName === nodeName && isChildOfBody(editor, list));
+    const getSelectedStyleType = editor => {
+      const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
+      const style = editor.dom.getStyle(listElm, 'listStyleType');
+      return Optional.from(style);
+    };
+    const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
+    const isWithinNonEditableList = (editor, element) => {
+      const parentList = editor.dom.getParent(element, 'ol,ul,dl');
+      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
+    };
+    const setNodeChangeHandler = (editor, nodeChangeHandler) => {
+      const initialNode = editor.selection.getNode();
+      nodeChangeHandler({
+        parents: editor.dom.getParents(initialNode),
+        element: initialNode
+      });
+      editor.on('NodeChange', nodeChangeHandler);
+      return () => editor.off('NodeChange', nodeChangeHandler);
+    };
+
+    const styleValueToText = styleValue => {
+      return styleValue.replace(/\-/g, ' ').replace(/\b\w/g, chr => {
+        return chr.toUpperCase();
+      });
+    };
+    const normalizeStyleValue = styleValue => isNullable(styleValue) || styleValue === 'default' ? '' : styleValue;
+    const makeSetupHandler = (editor, nodeName) => api => {
+      const updateButtonState = (editor, parents) => {
+        const element = editor.selection.getStart(true);
+        api.setActive(inList(editor, parents, nodeName));
+        api.setEnabled(!isWithinNonEditableList(editor, element));
+      };
+      const nodeChangeHandler = e => updateButtonState(editor, e.parents);
+      return setNodeChangeHandler(editor, nodeChangeHandler);
+    };
+    const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
+      editor.ui.registry.addSplitButton(id, {
+        tooltip,
+        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
+        presets: 'listpreview',
+        columns: 3,
+        fetch: callback => {
+          const items = global.map(styles, styleValue => {
+            const iconStyle = nodeName === 'OL' ? 'num' : 'bull';
+            const iconName = styleValue === 'disc' || styleValue === 'decimal' ? 'default' : styleValue;
+            const itemValue = normalizeStyleValue(styleValue);
+            const displayText = styleValueToText(styleValue);
+            return {
+              type: 'choiceitem',
+              value: itemValue,
+              icon: 'list-' + iconStyle + '-' + iconName,
+              text: displayText
+            };
+          });
+          callback(items);
+        },
+        onAction: () => editor.execCommand(cmd),
+        onItemAction: (_splitButtonApi, value) => {
+          applyListFormat(editor, nodeName, value);
+        },
+        select: value => {
+          const listStyleType = getSelectedStyleType(editor);
+          return listStyleType.map(listStyle => value === listStyle).getOr(false);
+        },
+        onSetup: makeSetupHandler(editor, nodeName)
+      });
+    };
+    const addButton = (editor, id, tooltip, cmd, nodeName, styleValue) => {
+      editor.ui.registry.addToggleButton(id, {
+        active: false,
+        tooltip,
+        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
+        onSetup: makeSetupHandler(editor, nodeName),
+        onAction: () => editor.queryCommandState(cmd) || styleValue === '' ? editor.execCommand(cmd) : applyListFormat(editor, nodeName, styleValue)
+      });
+    };
+    const addControl = (editor, id, tooltip, cmd, nodeName, styles) => {
+      if (styles.length > 1) {
+        addSplitButton(editor, id, tooltip, cmd, nodeName, styles);
+      } else {
+        addButton(editor, id, tooltip, cmd, nodeName, normalizeStyleValue(styles[0]));
+      }
+    };
+    const register = editor => {
+      addControl(editor, 'numlist', 'Numbered list', 'InsertOrderedList', 'OL', getNumberStyles(editor));
+      addControl(editor, 'bullist', 'Bullet list', 'InsertUnorderedList', 'UL', getBulletStyles(editor));
+    };
+
+    var Plugin = () => {
+      global$1.add('advlist', editor => {
+        if (editor.hasPlugin('lists')) {
+          register$1(editor);
+          register(editor);
+          register$2(editor);
+        } else {
+          console.error('Please use the Lists plugin together with the List Styles plugin.');
+        }
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
     var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
     const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
@@ -33234,266 +33494,6 @@ tinymce.IconManager.add('default', {
         setup$1(editor);
         setup$2(editor);
         setup(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const applyListFormat = (editor, listName, styleValue) => {
-      const cmd = listName === 'UL' ? 'InsertUnorderedList' : 'InsertOrderedList';
-      editor.execCommand(cmd, false, styleValue === false ? null : { 'list-style-type': styleValue });
-    };
-
-    const register$2 = editor => {
-      editor.addCommand('ApplyUnorderedListStyle', (ui, value) => {
-        applyListFormat(editor, 'UL', value['list-style-type']);
-      });
-      editor.addCommand('ApplyOrderedListStyle', (ui, value) => {
-        applyListFormat(editor, 'OL', value['list-style-type']);
-      });
-    };
-
-    const option = name => editor => editor.options.get(name);
-    const register$1 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('advlist_number_styles', {
-        processor: 'string[]',
-        default: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman'.split(',')
-      });
-      registerOption('advlist_bullet_styles', {
-        processor: 'string[]',
-        default: 'default,circle,square'.split(',')
-      });
-    };
-    const getNumberStyles = option('advlist_number_styles');
-    const getBulletStyles = option('advlist_bullet_styles');
-
-    const isNullable = a => a === null || a === undefined;
-    const isNonNullable = a => !isNullable(a);
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    class Optional {
-      constructor(tag, value) {
-        this.tag = tag;
-        this.value = value;
-      }
-      static some(value) {
-        return new Optional(true, value);
-      }
-      static none() {
-        return Optional.singletonNone;
-      }
-      fold(onNone, onSome) {
-        if (this.tag) {
-          return onSome(this.value);
-        } else {
-          return onNone();
-        }
-      }
-      isSome() {
-        return this.tag;
-      }
-      isNone() {
-        return !this.tag;
-      }
-      map(mapper) {
-        if (this.tag) {
-          return Optional.some(mapper(this.value));
-        } else {
-          return Optional.none();
-        }
-      }
-      bind(binder) {
-        if (this.tag) {
-          return binder(this.value);
-        } else {
-          return Optional.none();
-        }
-      }
-      exists(predicate) {
-        return this.tag && predicate(this.value);
-      }
-      forall(predicate) {
-        return !this.tag || predicate(this.value);
-      }
-      filter(predicate) {
-        if (!this.tag || predicate(this.value)) {
-          return this;
-        } else {
-          return Optional.none();
-        }
-      }
-      getOr(replacement) {
-        return this.tag ? this.value : replacement;
-      }
-      or(replacement) {
-        return this.tag ? this : replacement;
-      }
-      getOrThunk(thunk) {
-        return this.tag ? this.value : thunk();
-      }
-      orThunk(thunk) {
-        return this.tag ? this : thunk();
-      }
-      getOrDie(message) {
-        if (!this.tag) {
-          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
-        } else {
-          return this.value;
-        }
-      }
-      static from(value) {
-        return isNonNullable(value) ? Optional.some(value) : Optional.none();
-      }
-      getOrNull() {
-        return this.tag ? this.value : null;
-      }
-      getOrUndefined() {
-        return this.value;
-      }
-      each(worker) {
-        if (this.tag) {
-          worker(this.value);
-        }
-      }
-      toArray() {
-        return this.tag ? [this.value] : [];
-      }
-      toString() {
-        return this.tag ? `some(${ this.value })` : 'none()';
-      }
-    }
-    Optional.singletonNone = new Optional(false);
-
-    const findUntil = (xs, pred, until) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        if (pred(x, i)) {
-          return Optional.some(x);
-        } else if (until(x, i)) {
-          break;
-        }
-      }
-      return Optional.none();
-    };
-
-    const isCustomList = list => /\btox\-/.test(list.className);
-    const isChildOfBody = (editor, elm) => {
-      return editor.dom.isChildOf(elm, editor.getBody());
-    };
-    const matchNodeNames = regex => node => isNonNullable(node) && regex.test(node.nodeName);
-    const isListNode = matchNodeNames(/^(OL|UL|DL)$/);
-    const isTableCellNode = matchNodeNames(/^(TH|TD)$/);
-    const inList = (editor, parents, nodeName) => findUntil(parents, parent => isListNode(parent) && !isCustomList(parent), isTableCellNode).exists(list => list.nodeName === nodeName && isChildOfBody(editor, list));
-    const getSelectedStyleType = editor => {
-      const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
-      const style = editor.dom.getStyle(listElm, 'listStyleType');
-      return Optional.from(style);
-    };
-    const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
-    const isWithinNonEditableList = (editor, element) => {
-      const parentList = editor.dom.getParent(element, 'ol,ul,dl');
-      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
-    };
-    const setNodeChangeHandler = (editor, nodeChangeHandler) => {
-      const initialNode = editor.selection.getNode();
-      nodeChangeHandler({
-        parents: editor.dom.getParents(initialNode),
-        element: initialNode
-      });
-      editor.on('NodeChange', nodeChangeHandler);
-      return () => editor.off('NodeChange', nodeChangeHandler);
-    };
-
-    const styleValueToText = styleValue => {
-      return styleValue.replace(/\-/g, ' ').replace(/\b\w/g, chr => {
-        return chr.toUpperCase();
-      });
-    };
-    const normalizeStyleValue = styleValue => isNullable(styleValue) || styleValue === 'default' ? '' : styleValue;
-    const makeSetupHandler = (editor, nodeName) => api => {
-      const updateButtonState = (editor, parents) => {
-        const element = editor.selection.getStart(true);
-        api.setActive(inList(editor, parents, nodeName));
-        api.setEnabled(!isWithinNonEditableList(editor, element));
-      };
-      const nodeChangeHandler = e => updateButtonState(editor, e.parents);
-      return setNodeChangeHandler(editor, nodeChangeHandler);
-    };
-    const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
-      editor.ui.registry.addSplitButton(id, {
-        tooltip,
-        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
-        presets: 'listpreview',
-        columns: 3,
-        fetch: callback => {
-          const items = global.map(styles, styleValue => {
-            const iconStyle = nodeName === 'OL' ? 'num' : 'bull';
-            const iconName = styleValue === 'disc' || styleValue === 'decimal' ? 'default' : styleValue;
-            const itemValue = normalizeStyleValue(styleValue);
-            const displayText = styleValueToText(styleValue);
-            return {
-              type: 'choiceitem',
-              value: itemValue,
-              icon: 'list-' + iconStyle + '-' + iconName,
-              text: displayText
-            };
-          });
-          callback(items);
-        },
-        onAction: () => editor.execCommand(cmd),
-        onItemAction: (_splitButtonApi, value) => {
-          applyListFormat(editor, nodeName, value);
-        },
-        select: value => {
-          const listStyleType = getSelectedStyleType(editor);
-          return listStyleType.map(listStyle => value === listStyle).getOr(false);
-        },
-        onSetup: makeSetupHandler(editor, nodeName)
-      });
-    };
-    const addButton = (editor, id, tooltip, cmd, nodeName, styleValue) => {
-      editor.ui.registry.addToggleButton(id, {
-        active: false,
-        tooltip,
-        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
-        onSetup: makeSetupHandler(editor, nodeName),
-        onAction: () => editor.queryCommandState(cmd) || styleValue === '' ? editor.execCommand(cmd) : applyListFormat(editor, nodeName, styleValue)
-      });
-    };
-    const addControl = (editor, id, tooltip, cmd, nodeName, styles) => {
-      if (styles.length > 1) {
-        addSplitButton(editor, id, tooltip, cmd, nodeName, styles);
-      } else {
-        addButton(editor, id, tooltip, cmd, nodeName, normalizeStyleValue(styles[0]));
-      }
-    };
-    const register = editor => {
-      addControl(editor, 'numlist', 'Numbered list', 'InsertOrderedList', 'OL', getNumberStyles(editor));
-      addControl(editor, 'bullist', 'Bullet list', 'InsertUnorderedList', 'UL', getBulletStyles(editor));
-    };
-
-    var Plugin = () => {
-      global$1.add('advlist', editor => {
-        if (editor.hasPlugin('lists')) {
-          register$1(editor);
-          register(editor);
-          register$2(editor);
-        } else {
-          console.error('Please use the Lists plugin together with the List Styles plugin.');
-        }
       });
     };
 
@@ -36112,6 +36112,397 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
+    var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const hasProto = (v, constructor, predicate) => {
+      var _a;
+      if (predicate(v, constructor.prototype)) {
+        return true;
+      } else {
+        return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
+      }
+    };
+    const typeOf = x => {
+      const t = typeof x;
+      if (x === null) {
+        return 'null';
+      } else if (t === 'object' && Array.isArray(x)) {
+        return 'array';
+      } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
+        return 'string';
+      } else {
+        return t;
+      }
+    };
+    const isType$1 = type => value => typeOf(value) === type;
+    const isSimpleType = type => value => typeof value === type;
+    const isString = isType$1('string');
+    const isBoolean = isSimpleType('boolean');
+    const isNullable = a => a === null || a === undefined;
+    const isNonNullable = a => !isNullable(a);
+    const isFunction = isSimpleType('function');
+    const isNumber = isSimpleType('number');
+
+    const compose1 = (fbc, fab) => a => fbc(fab(a));
+    const constant = value => {
+      return () => {
+        return value;
+      };
+    };
+    const never = constant(false);
+
+    class Optional {
+      constructor(tag, value) {
+        this.tag = tag;
+        this.value = value;
+      }
+      static some(value) {
+        return new Optional(true, value);
+      }
+      static none() {
+        return Optional.singletonNone;
+      }
+      fold(onNone, onSome) {
+        if (this.tag) {
+          return onSome(this.value);
+        } else {
+          return onNone();
+        }
+      }
+      isSome() {
+        return this.tag;
+      }
+      isNone() {
+        return !this.tag;
+      }
+      map(mapper) {
+        if (this.tag) {
+          return Optional.some(mapper(this.value));
+        } else {
+          return Optional.none();
+        }
+      }
+      bind(binder) {
+        if (this.tag) {
+          return binder(this.value);
+        } else {
+          return Optional.none();
+        }
+      }
+      exists(predicate) {
+        return this.tag && predicate(this.value);
+      }
+      forall(predicate) {
+        return !this.tag || predicate(this.value);
+      }
+      filter(predicate) {
+        if (!this.tag || predicate(this.value)) {
+          return this;
+        } else {
+          return Optional.none();
+        }
+      }
+      getOr(replacement) {
+        return this.tag ? this.value : replacement;
+      }
+      or(replacement) {
+        return this.tag ? this : replacement;
+      }
+      getOrThunk(thunk) {
+        return this.tag ? this.value : thunk();
+      }
+      orThunk(thunk) {
+        return this.tag ? this : thunk();
+      }
+      getOrDie(message) {
+        if (!this.tag) {
+          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+        } else {
+          return this.value;
+        }
+      }
+      static from(value) {
+        return isNonNullable(value) ? Optional.some(value) : Optional.none();
+      }
+      getOrNull() {
+        return this.tag ? this.value : null;
+      }
+      getOrUndefined() {
+        return this.value;
+      }
+      each(worker) {
+        if (this.tag) {
+          worker(this.value);
+        }
+      }
+      toArray() {
+        return this.tag ? [this.value] : [];
+      }
+      toString() {
+        return this.tag ? `some(${ this.value })` : 'none()';
+      }
+    }
+    Optional.singletonNone = new Optional(false);
+
+    const map = (xs, f) => {
+      const len = xs.length;
+      const r = new Array(len);
+      for (let i = 0; i < len; i++) {
+        const x = xs[i];
+        r[i] = f(x, i);
+      }
+      return r;
+    };
+    const each = (xs, f) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        f(x, i);
+      }
+    };
+    const filter = (xs, pred) => {
+      const r = [];
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        if (pred(x, i)) {
+          r.push(x);
+        }
+      }
+      return r;
+    };
+
+    const DOCUMENT_FRAGMENT = 11;
+    const ELEMENT = 1;
+    const TEXT = 3;
+
+    const fromHtml = (html, scope) => {
+      const doc = scope || document;
+      const div = doc.createElement('div');
+      div.innerHTML = html;
+      if (!div.hasChildNodes() || div.childNodes.length > 1) {
+        const message = 'HTML does not have a single root node';
+        console.error(message, html);
+        throw new Error(message);
+      }
+      return fromDom(div.childNodes[0]);
+    };
+    const fromTag = (tag, scope) => {
+      const doc = scope || document;
+      const node = doc.createElement(tag);
+      return fromDom(node);
+    };
+    const fromText = (text, scope) => {
+      const doc = scope || document;
+      const node = doc.createTextNode(text);
+      return fromDom(node);
+    };
+    const fromDom = node => {
+      if (node === null || node === undefined) {
+        throw new Error('Node cannot be null or undefined');
+      }
+      return { dom: node };
+    };
+    const fromPoint = (docElm, x, y) => Optional.from(docElm.dom.elementFromPoint(x, y)).map(fromDom);
+    const SugarElement = {
+      fromHtml,
+      fromTag,
+      fromText,
+      fromDom,
+      fromPoint
+    };
+
+    const is = (element, selector) => {
+      const dom = element.dom;
+      if (dom.nodeType !== ELEMENT) {
+        return false;
+      } else {
+        const elem = dom;
+        if (elem.matches !== undefined) {
+          return elem.matches(selector);
+        } else if (elem.msMatchesSelector !== undefined) {
+          return elem.msMatchesSelector(selector);
+        } else if (elem.webkitMatchesSelector !== undefined) {
+          return elem.webkitMatchesSelector(selector);
+        } else if (elem.mozMatchesSelector !== undefined) {
+          return elem.mozMatchesSelector(selector);
+        } else {
+          throw new Error('Browser lacks native selectors');
+        }
+      }
+    };
+
+    typeof window !== 'undefined' ? window : Function('return this;')();
+
+    const name = element => {
+      const r = element.dom.nodeName;
+      return r.toLowerCase();
+    };
+    const type = element => element.dom.nodeType;
+    const isType = t => element => type(element) === t;
+    const isElement = isType(ELEMENT);
+    const isText = isType(TEXT);
+    const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
+    const isTag = tag => e => isElement(e) && name(e) === tag;
+
+    const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
+    const children$2 = element => map(element.dom.childNodes, SugarElement.fromDom);
+
+    const rawSet = (dom, key, value) => {
+      if (isString(value) || isBoolean(value) || isNumber(value)) {
+        dom.setAttribute(key, value + '');
+      } else {
+        console.error('Invalid call to Attribute.set. Key ', key, ':: Value ', value, ':: Element ', dom);
+        throw new Error('Attribute value was not simple');
+      }
+    };
+    const set = (element, key, value) => {
+      rawSet(element.dom, key, value);
+    };
+    const remove = (element, key) => {
+      element.dom.removeAttribute(key);
+    };
+
+    const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
+    const getShadowRoot = e => {
+      const r = getRootNode(e);
+      return isShadowRoot(r) ? Optional.some(r) : Optional.none();
+    };
+    const getShadowHost = e => SugarElement.fromDom(e.dom.host);
+
+    const inBody = element => {
+      const dom = isText(element) ? element.dom.parentNode : element.dom;
+      if (dom === undefined || dom === null || dom.ownerDocument === null) {
+        return false;
+      }
+      const doc = dom.ownerDocument;
+      return getShadowRoot(SugarElement.fromDom(dom)).fold(() => doc.body.contains(dom), compose1(inBody, getShadowHost));
+    };
+
+    const ancestor$1 = (scope, predicate, isRoot) => {
+      let element = scope.dom;
+      const stop = isFunction(isRoot) ? isRoot : never;
+      while (element.parentNode) {
+        element = element.parentNode;
+        const el = SugarElement.fromDom(element);
+        if (predicate(el)) {
+          return Optional.some(el);
+        } else if (stop(el)) {
+          break;
+        }
+      }
+      return Optional.none();
+    };
+
+    const ancestor = (scope, selector, isRoot) => ancestor$1(scope, e => is(e, selector), isRoot);
+
+    const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
+
+    const get = (element, property) => {
+      const dom = element.dom;
+      const styles = window.getComputedStyle(dom);
+      const r = styles.getPropertyValue(property);
+      return r === '' && !inBody(element) ? getUnsafeProperty(dom, property) : r;
+    };
+    const getUnsafeProperty = (dom, property) => isSupported(dom) ? dom.style.getPropertyValue(property) : '';
+
+    const getDirection = element => get(element, 'direction') === 'rtl' ? 'rtl' : 'ltr';
+
+    const children$1 = (scope, predicate) => filter(children$2(scope), predicate);
+
+    const children = (scope, selector) => children$1(scope, e => is(e, selector));
+
+    const getParentElement = element => parent(element).filter(isElement);
+    const getNormalizedBlock = (element, isListItem) => {
+      const normalizedElement = isListItem ? ancestor(element, 'ol,ul') : Optional.some(element);
+      return normalizedElement.getOr(element);
+    };
+    const isListItem = isTag('li');
+    const setDirOnElements = (dom, blocks, dir) => {
+      each(blocks, block => {
+        const blockElement = SugarElement.fromDom(block);
+        const isBlockElementListItem = isListItem(blockElement);
+        const normalizedBlock = getNormalizedBlock(blockElement, isBlockElementListItem);
+        const normalizedBlockParent = getParentElement(normalizedBlock);
+        normalizedBlockParent.each(parent => {
+          dom.setStyle(normalizedBlock.dom, 'direction', null);
+          const parentDirection = getDirection(parent);
+          if (parentDirection === dir) {
+            remove(normalizedBlock, 'dir');
+          } else {
+            set(normalizedBlock, 'dir', dir);
+          }
+          if (getDirection(normalizedBlock) !== dir) {
+            dom.setStyle(normalizedBlock.dom, 'direction', dir);
+          }
+          if (isBlockElementListItem) {
+            const listItems = children(normalizedBlock, 'li[dir],li[style]');
+            each(listItems, listItem => {
+              remove(listItem, 'dir');
+              dom.setStyle(listItem.dom, 'direction', null);
+            });
+          }
+        });
+      });
+    };
+    const setDir = (editor, dir) => {
+      if (editor.selection.isEditable()) {
+        setDirOnElements(editor.dom, editor.selection.getSelectedBlocks(), dir);
+        editor.nodeChanged();
+      }
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mceDirectionLTR', () => {
+        setDir(editor, 'ltr');
+      });
+      editor.addCommand('mceDirectionRTL', () => {
+        setDir(editor, 'rtl');
+      });
+    };
+
+    const getNodeChangeHandler = (editor, dir) => api => {
+      const nodeChangeHandler = e => {
+        const element = SugarElement.fromDom(e.element);
+        api.setActive(getDirection(element) === dir);
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChangeHandler);
+      api.setEnabled(editor.selection.isEditable());
+      return () => editor.off('NodeChange', nodeChangeHandler);
+    };
+    const register = editor => {
+      editor.ui.registry.addToggleButton('ltr', {
+        tooltip: 'Left to right',
+        icon: 'ltr',
+        onAction: () => editor.execCommand('mceDirectionLTR'),
+        onSetup: getNodeChangeHandler(editor, 'ltr')
+      });
+      editor.ui.registry.addToggleButton('rtl', {
+        tooltip: 'Right to left',
+        icon: 'rtl',
+        onAction: () => editor.execCommand('mceDirectionRTL'),
+        onSetup: getNodeChangeHandler(editor, 'rtl')
+      });
+    };
+
+    var Plugin = () => {
+      global.add('directionality', editor => {
+        register$1(editor);
+        register(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
     var global$2 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
     const isNullable = a => a === null || a === undefined;
@@ -38576,994 +38967,6 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
-    var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const hasProto = (v, constructor, predicate) => {
-      var _a;
-      if (predicate(v, constructor.prototype)) {
-        return true;
-      } else {
-        return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
-      }
-    };
-    const typeOf = x => {
-      const t = typeof x;
-      if (x === null) {
-        return 'null';
-      } else if (t === 'object' && Array.isArray(x)) {
-        return 'array';
-      } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
-        return 'string';
-      } else {
-        return t;
-      }
-    };
-    const isType$1 = type => value => typeOf(value) === type;
-    const isSimpleType = type => value => typeof value === type;
-    const isString = isType$1('string');
-    const isBoolean = isSimpleType('boolean');
-    const isNullable = a => a === null || a === undefined;
-    const isNonNullable = a => !isNullable(a);
-    const isFunction = isSimpleType('function');
-    const isNumber = isSimpleType('number');
-
-    const compose1 = (fbc, fab) => a => fbc(fab(a));
-    const constant = value => {
-      return () => {
-        return value;
-      };
-    };
-    const never = constant(false);
-
-    class Optional {
-      constructor(tag, value) {
-        this.tag = tag;
-        this.value = value;
-      }
-      static some(value) {
-        return new Optional(true, value);
-      }
-      static none() {
-        return Optional.singletonNone;
-      }
-      fold(onNone, onSome) {
-        if (this.tag) {
-          return onSome(this.value);
-        } else {
-          return onNone();
-        }
-      }
-      isSome() {
-        return this.tag;
-      }
-      isNone() {
-        return !this.tag;
-      }
-      map(mapper) {
-        if (this.tag) {
-          return Optional.some(mapper(this.value));
-        } else {
-          return Optional.none();
-        }
-      }
-      bind(binder) {
-        if (this.tag) {
-          return binder(this.value);
-        } else {
-          return Optional.none();
-        }
-      }
-      exists(predicate) {
-        return this.tag && predicate(this.value);
-      }
-      forall(predicate) {
-        return !this.tag || predicate(this.value);
-      }
-      filter(predicate) {
-        if (!this.tag || predicate(this.value)) {
-          return this;
-        } else {
-          return Optional.none();
-        }
-      }
-      getOr(replacement) {
-        return this.tag ? this.value : replacement;
-      }
-      or(replacement) {
-        return this.tag ? this : replacement;
-      }
-      getOrThunk(thunk) {
-        return this.tag ? this.value : thunk();
-      }
-      orThunk(thunk) {
-        return this.tag ? this : thunk();
-      }
-      getOrDie(message) {
-        if (!this.tag) {
-          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
-        } else {
-          return this.value;
-        }
-      }
-      static from(value) {
-        return isNonNullable(value) ? Optional.some(value) : Optional.none();
-      }
-      getOrNull() {
-        return this.tag ? this.value : null;
-      }
-      getOrUndefined() {
-        return this.value;
-      }
-      each(worker) {
-        if (this.tag) {
-          worker(this.value);
-        }
-      }
-      toArray() {
-        return this.tag ? [this.value] : [];
-      }
-      toString() {
-        return this.tag ? `some(${ this.value })` : 'none()';
-      }
-    }
-    Optional.singletonNone = new Optional(false);
-
-    const map = (xs, f) => {
-      const len = xs.length;
-      const r = new Array(len);
-      for (let i = 0; i < len; i++) {
-        const x = xs[i];
-        r[i] = f(x, i);
-      }
-      return r;
-    };
-    const each = (xs, f) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        f(x, i);
-      }
-    };
-    const filter = (xs, pred) => {
-      const r = [];
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        if (pred(x, i)) {
-          r.push(x);
-        }
-      }
-      return r;
-    };
-
-    const DOCUMENT_FRAGMENT = 11;
-    const ELEMENT = 1;
-    const TEXT = 3;
-
-    const fromHtml = (html, scope) => {
-      const doc = scope || document;
-      const div = doc.createElement('div');
-      div.innerHTML = html;
-      if (!div.hasChildNodes() || div.childNodes.length > 1) {
-        const message = 'HTML does not have a single root node';
-        console.error(message, html);
-        throw new Error(message);
-      }
-      return fromDom(div.childNodes[0]);
-    };
-    const fromTag = (tag, scope) => {
-      const doc = scope || document;
-      const node = doc.createElement(tag);
-      return fromDom(node);
-    };
-    const fromText = (text, scope) => {
-      const doc = scope || document;
-      const node = doc.createTextNode(text);
-      return fromDom(node);
-    };
-    const fromDom = node => {
-      if (node === null || node === undefined) {
-        throw new Error('Node cannot be null or undefined');
-      }
-      return { dom: node };
-    };
-    const fromPoint = (docElm, x, y) => Optional.from(docElm.dom.elementFromPoint(x, y)).map(fromDom);
-    const SugarElement = {
-      fromHtml,
-      fromTag,
-      fromText,
-      fromDom,
-      fromPoint
-    };
-
-    const is = (element, selector) => {
-      const dom = element.dom;
-      if (dom.nodeType !== ELEMENT) {
-        return false;
-      } else {
-        const elem = dom;
-        if (elem.matches !== undefined) {
-          return elem.matches(selector);
-        } else if (elem.msMatchesSelector !== undefined) {
-          return elem.msMatchesSelector(selector);
-        } else if (elem.webkitMatchesSelector !== undefined) {
-          return elem.webkitMatchesSelector(selector);
-        } else if (elem.mozMatchesSelector !== undefined) {
-          return elem.mozMatchesSelector(selector);
-        } else {
-          throw new Error('Browser lacks native selectors');
-        }
-      }
-    };
-
-    typeof window !== 'undefined' ? window : Function('return this;')();
-
-    const name = element => {
-      const r = element.dom.nodeName;
-      return r.toLowerCase();
-    };
-    const type = element => element.dom.nodeType;
-    const isType = t => element => type(element) === t;
-    const isElement = isType(ELEMENT);
-    const isText = isType(TEXT);
-    const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
-    const isTag = tag => e => isElement(e) && name(e) === tag;
-
-    const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
-    const children$2 = element => map(element.dom.childNodes, SugarElement.fromDom);
-
-    const rawSet = (dom, key, value) => {
-      if (isString(value) || isBoolean(value) || isNumber(value)) {
-        dom.setAttribute(key, value + '');
-      } else {
-        console.error('Invalid call to Attribute.set. Key ', key, ':: Value ', value, ':: Element ', dom);
-        throw new Error('Attribute value was not simple');
-      }
-    };
-    const set = (element, key, value) => {
-      rawSet(element.dom, key, value);
-    };
-    const remove = (element, key) => {
-      element.dom.removeAttribute(key);
-    };
-
-    const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
-    const getShadowRoot = e => {
-      const r = getRootNode(e);
-      return isShadowRoot(r) ? Optional.some(r) : Optional.none();
-    };
-    const getShadowHost = e => SugarElement.fromDom(e.dom.host);
-
-    const inBody = element => {
-      const dom = isText(element) ? element.dom.parentNode : element.dom;
-      if (dom === undefined || dom === null || dom.ownerDocument === null) {
-        return false;
-      }
-      const doc = dom.ownerDocument;
-      return getShadowRoot(SugarElement.fromDom(dom)).fold(() => doc.body.contains(dom), compose1(inBody, getShadowHost));
-    };
-
-    const ancestor$1 = (scope, predicate, isRoot) => {
-      let element = scope.dom;
-      const stop = isFunction(isRoot) ? isRoot : never;
-      while (element.parentNode) {
-        element = element.parentNode;
-        const el = SugarElement.fromDom(element);
-        if (predicate(el)) {
-          return Optional.some(el);
-        } else if (stop(el)) {
-          break;
-        }
-      }
-      return Optional.none();
-    };
-
-    const ancestor = (scope, selector, isRoot) => ancestor$1(scope, e => is(e, selector), isRoot);
-
-    const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
-
-    const get = (element, property) => {
-      const dom = element.dom;
-      const styles = window.getComputedStyle(dom);
-      const r = styles.getPropertyValue(property);
-      return r === '' && !inBody(element) ? getUnsafeProperty(dom, property) : r;
-    };
-    const getUnsafeProperty = (dom, property) => isSupported(dom) ? dom.style.getPropertyValue(property) : '';
-
-    const getDirection = element => get(element, 'direction') === 'rtl' ? 'rtl' : 'ltr';
-
-    const children$1 = (scope, predicate) => filter(children$2(scope), predicate);
-
-    const children = (scope, selector) => children$1(scope, e => is(e, selector));
-
-    const getParentElement = element => parent(element).filter(isElement);
-    const getNormalizedBlock = (element, isListItem) => {
-      const normalizedElement = isListItem ? ancestor(element, 'ol,ul') : Optional.some(element);
-      return normalizedElement.getOr(element);
-    };
-    const isListItem = isTag('li');
-    const setDirOnElements = (dom, blocks, dir) => {
-      each(blocks, block => {
-        const blockElement = SugarElement.fromDom(block);
-        const isBlockElementListItem = isListItem(blockElement);
-        const normalizedBlock = getNormalizedBlock(blockElement, isBlockElementListItem);
-        const normalizedBlockParent = getParentElement(normalizedBlock);
-        normalizedBlockParent.each(parent => {
-          dom.setStyle(normalizedBlock.dom, 'direction', null);
-          const parentDirection = getDirection(parent);
-          if (parentDirection === dir) {
-            remove(normalizedBlock, 'dir');
-          } else {
-            set(normalizedBlock, 'dir', dir);
-          }
-          if (getDirection(normalizedBlock) !== dir) {
-            dom.setStyle(normalizedBlock.dom, 'direction', dir);
-          }
-          if (isBlockElementListItem) {
-            const listItems = children(normalizedBlock, 'li[dir],li[style]');
-            each(listItems, listItem => {
-              remove(listItem, 'dir');
-              dom.setStyle(listItem.dom, 'direction', null);
-            });
-          }
-        });
-      });
-    };
-    const setDir = (editor, dir) => {
-      if (editor.selection.isEditable()) {
-        setDirOnElements(editor.dom, editor.selection.getSelectedBlocks(), dir);
-        editor.nodeChanged();
-      }
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mceDirectionLTR', () => {
-        setDir(editor, 'ltr');
-      });
-      editor.addCommand('mceDirectionRTL', () => {
-        setDir(editor, 'rtl');
-      });
-    };
-
-    const getNodeChangeHandler = (editor, dir) => api => {
-      const nodeChangeHandler = e => {
-        const element = SugarElement.fromDom(e.element);
-        api.setActive(getDirection(element) === dir);
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChangeHandler);
-      api.setEnabled(editor.selection.isEditable());
-      return () => editor.off('NodeChange', nodeChangeHandler);
-    };
-    const register = editor => {
-      editor.ui.registry.addToggleButton('ltr', {
-        tooltip: 'Left to right',
-        icon: 'ltr',
-        onAction: () => editor.execCommand('mceDirectionLTR'),
-        onSetup: getNodeChangeHandler(editor, 'ltr')
-      });
-      editor.ui.registry.addToggleButton('rtl', {
-        tooltip: 'Right to left',
-        icon: 'rtl',
-        onAction: () => editor.execCommand('mceDirectionRTL'),
-        onSetup: getNodeChangeHandler(editor, 'rtl')
-      });
-    };
-
-    var Plugin = () => {
-      global.add('directionality', editor => {
-        register$1(editor);
-        register(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const eq = t => a => t === a;
-    const isNull = eq(null);
-    const isUndefined = eq(undefined);
-    const isNullable = a => a === null || a === undefined;
-    const isNonNullable = a => !isNullable(a);
-
-    const noop = () => {
-    };
-    const constant = value => {
-      return () => {
-        return value;
-      };
-    };
-    const never = constant(false);
-
-    class Optional {
-      constructor(tag, value) {
-        this.tag = tag;
-        this.value = value;
-      }
-      static some(value) {
-        return new Optional(true, value);
-      }
-      static none() {
-        return Optional.singletonNone;
-      }
-      fold(onNone, onSome) {
-        if (this.tag) {
-          return onSome(this.value);
-        } else {
-          return onNone();
-        }
-      }
-      isSome() {
-        return this.tag;
-      }
-      isNone() {
-        return !this.tag;
-      }
-      map(mapper) {
-        if (this.tag) {
-          return Optional.some(mapper(this.value));
-        } else {
-          return Optional.none();
-        }
-      }
-      bind(binder) {
-        if (this.tag) {
-          return binder(this.value);
-        } else {
-          return Optional.none();
-        }
-      }
-      exists(predicate) {
-        return this.tag && predicate(this.value);
-      }
-      forall(predicate) {
-        return !this.tag || predicate(this.value);
-      }
-      filter(predicate) {
-        if (!this.tag || predicate(this.value)) {
-          return this;
-        } else {
-          return Optional.none();
-        }
-      }
-      getOr(replacement) {
-        return this.tag ? this.value : replacement;
-      }
-      or(replacement) {
-        return this.tag ? this : replacement;
-      }
-      getOrThunk(thunk) {
-        return this.tag ? this.value : thunk();
-      }
-      orThunk(thunk) {
-        return this.tag ? this : thunk();
-      }
-      getOrDie(message) {
-        if (!this.tag) {
-          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
-        } else {
-          return this.value;
-        }
-      }
-      static from(value) {
-        return isNonNullable(value) ? Optional.some(value) : Optional.none();
-      }
-      getOrNull() {
-        return this.tag ? this.value : null;
-      }
-      getOrUndefined() {
-        return this.value;
-      }
-      each(worker) {
-        if (this.tag) {
-          worker(this.value);
-        }
-      }
-      toArray() {
-        return this.tag ? [this.value] : [];
-      }
-      toString() {
-        return this.tag ? `some(${ this.value })` : 'none()';
-      }
-    }
-    Optional.singletonNone = new Optional(false);
-
-    const exists = (xs, pred) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        if (pred(x, i)) {
-          return true;
-        }
-      }
-      return false;
-    };
-    const map$1 = (xs, f) => {
-      const len = xs.length;
-      const r = new Array(len);
-      for (let i = 0; i < len; i++) {
-        const x = xs[i];
-        r[i] = f(x, i);
-      }
-      return r;
-    };
-    const each$1 = (xs, f) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        f(x, i);
-      }
-    };
-
-    const Cell = initial => {
-      let value = initial;
-      const get = () => {
-        return value;
-      };
-      const set = v => {
-        value = v;
-      };
-      return {
-        get,
-        set
-      };
-    };
-
-    const last = (fn, rate) => {
-      let timer = null;
-      const cancel = () => {
-        if (!isNull(timer)) {
-          clearTimeout(timer);
-          timer = null;
-        }
-      };
-      const throttle = (...args) => {
-        cancel();
-        timer = setTimeout(() => {
-          timer = null;
-          fn.apply(null, args);
-        }, rate);
-      };
-      return {
-        cancel,
-        throttle
-      };
-    };
-
-    const insertEmoticon = (editor, ch) => {
-      editor.insertContent(ch);
-    };
-
-    const keys = Object.keys;
-    const hasOwnProperty = Object.hasOwnProperty;
-    const each = (obj, f) => {
-      const props = keys(obj);
-      for (let k = 0, len = props.length; k < len; k++) {
-        const i = props[k];
-        const x = obj[i];
-        f(x, i);
-      }
-    };
-    const map = (obj, f) => {
-      return tupleMap(obj, (x, i) => ({
-        k: i,
-        v: f(x, i)
-      }));
-    };
-    const tupleMap = (obj, f) => {
-      const r = {};
-      each(obj, (x, i) => {
-        const tuple = f(x, i);
-        r[tuple.k] = tuple.v;
-      });
-      return r;
-    };
-    const has = (obj, key) => hasOwnProperty.call(obj, key);
-
-    const shallow = (old, nu) => {
-      return nu;
-    };
-    const baseMerge = merger => {
-      return (...objects) => {
-        if (objects.length === 0) {
-          throw new Error(`Can't merge zero objects`);
-        }
-        const ret = {};
-        for (let j = 0; j < objects.length; j++) {
-          const curObject = objects[j];
-          for (const key in curObject) {
-            if (has(curObject, key)) {
-              ret[key] = merger(ret[key], curObject[key]);
-            }
-          }
-        }
-        return ret;
-      };
-    };
-    const merge = baseMerge(shallow);
-
-    const singleton = doRevoke => {
-      const subject = Cell(Optional.none());
-      const revoke = () => subject.get().each(doRevoke);
-      const clear = () => {
-        revoke();
-        subject.set(Optional.none());
-      };
-      const isSet = () => subject.get().isSome();
-      const get = () => subject.get();
-      const set = s => {
-        revoke();
-        subject.set(Optional.some(s));
-      };
-      return {
-        clear,
-        isSet,
-        get,
-        set
-      };
-    };
-    const value = () => {
-      const subject = singleton(noop);
-      const on = f => subject.get().each(f);
-      return {
-        ...subject,
-        on
-      };
-    };
-
-    const checkRange = (str, substr, start) => substr === '' || str.length >= substr.length && str.substr(start, start + substr.length) === substr;
-    const contains = (str, substr, start = 0, end) => {
-      const idx = str.indexOf(substr, start);
-      if (idx !== -1) {
-        return isUndefined(end) ? true : idx + substr.length <= end;
-      } else {
-        return false;
-      }
-    };
-    const startsWith = (str, prefix) => {
-      return checkRange(str, prefix, 0);
-    };
-
-    var global = tinymce.util.Tools.resolve('tinymce.Resource');
-
-    const DEFAULT_ID = 'tinymce.plugins.emoticons';
-    const option = name => editor => editor.options.get(name);
-    const register$2 = (editor, pluginUrl) => {
-      const registerOption = editor.options.register;
-      registerOption('emoticons_database', {
-        processor: 'string',
-        default: 'emojis'
-      });
-      registerOption('emoticons_database_url', {
-        processor: 'string',
-        default: `${ pluginUrl }/js/${ getEmojiDatabase(editor) }${ editor.suffix }.js`
-      });
-      registerOption('emoticons_database_id', {
-        processor: 'string',
-        default: DEFAULT_ID
-      });
-      registerOption('emoticons_append', {
-        processor: 'object',
-        default: {}
-      });
-      registerOption('emoticons_images_url', {
-        processor: 'string',
-        default: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/15.1.0/72x72/'
-      });
-    };
-    const getEmojiDatabase = option('emoticons_database');
-    const getEmojiDatabaseUrl = option('emoticons_database_url');
-    const getEmojiDatabaseId = option('emoticons_database_id');
-    const getAppendedEmoji = option('emoticons_append');
-    const getEmojiImageUrl = option('emoticons_images_url');
-
-    const ALL_CATEGORY = 'All';
-    const categoryNameMap = {
-      symbols: 'Symbols',
-      people: 'People',
-      animals_and_nature: 'Animals and Nature',
-      food_and_drink: 'Food and Drink',
-      activity: 'Activity',
-      travel_and_places: 'Travel and Places',
-      objects: 'Objects',
-      flags: 'Flags',
-      user: 'User Defined'
-    };
-    const translateCategory = (categories, name) => has(categories, name) ? categories[name] : name;
-    const getUserDefinedEmoji = editor => {
-      const userDefinedEmoticons = getAppendedEmoji(editor);
-      return map(userDefinedEmoticons, value => ({
-        keywords: [],
-        category: 'user',
-        ...value
-      }));
-    };
-    const initDatabase = (editor, databaseUrl, databaseId) => {
-      const categories = value();
-      const all = value();
-      const emojiImagesUrl = getEmojiImageUrl(editor);
-      const getEmoji = lib => {
-        if (startsWith(lib.char, '<img')) {
-          return lib.char.replace(/src="([^"]+)"/, (match, url) => `src="${ emojiImagesUrl }${ url }"`);
-        } else {
-          return lib.char;
-        }
-      };
-      const processEmojis = emojis => {
-        const cats = {};
-        const everything = [];
-        each(emojis, (lib, title) => {
-          const entry = {
-            title,
-            keywords: lib.keywords,
-            char: getEmoji(lib),
-            category: translateCategory(categoryNameMap, lib.category)
-          };
-          const current = cats[entry.category] !== undefined ? cats[entry.category] : [];
-          cats[entry.category] = current.concat([entry]);
-          everything.push(entry);
-        });
-        categories.set(cats);
-        all.set(everything);
-      };
-      editor.on('init', () => {
-        global.load(databaseId, databaseUrl).then(emojis => {
-          const userEmojis = getUserDefinedEmoji(editor);
-          processEmojis(merge(emojis, userEmojis));
-        }, err => {
-          console.log(`Failed to load emojis: ${ err }`);
-          categories.set({});
-          all.set([]);
-        });
-      });
-      const listCategory = category => {
-        if (category === ALL_CATEGORY) {
-          return listAll();
-        }
-        return categories.get().bind(cats => Optional.from(cats[category])).getOr([]);
-      };
-      const listAll = () => all.get().getOr([]);
-      const listCategories = () => [ALL_CATEGORY].concat(keys(categories.get().getOr({})));
-      const waitForLoad = () => {
-        if (hasLoaded()) {
-          return Promise.resolve(true);
-        } else {
-          return new Promise((resolve, reject) => {
-            let numRetries = 15;
-            const interval = setInterval(() => {
-              if (hasLoaded()) {
-                clearInterval(interval);
-                resolve(true);
-              } else {
-                numRetries--;
-                if (numRetries < 0) {
-                  console.log('Could not load emojis from url: ' + databaseUrl);
-                  clearInterval(interval);
-                  reject(false);
-                }
-              }
-            }, 100);
-          });
-        }
-      };
-      const hasLoaded = () => categories.isSet() && all.isSet();
-      return {
-        listCategories,
-        hasLoaded,
-        waitForLoad,
-        listAll,
-        listCategory
-      };
-    };
-
-    const emojiMatches = (emoji, lowerCasePattern) => contains(emoji.title.toLowerCase(), lowerCasePattern) || exists(emoji.keywords, k => contains(k.toLowerCase(), lowerCasePattern));
-    const emojisFrom = (list, pattern, maxResults) => {
-      const matches = [];
-      const lowerCasePattern = pattern.toLowerCase();
-      const reachedLimit = maxResults.fold(() => never, max => size => size >= max);
-      for (let i = 0; i < list.length; i++) {
-        if (pattern.length === 0 || emojiMatches(list[i], lowerCasePattern)) {
-          matches.push({
-            value: list[i].char,
-            text: list[i].title,
-            icon: list[i].char
-          });
-          if (reachedLimit(matches.length)) {
-            break;
-          }
-        }
-      }
-      return matches;
-    };
-
-    const patternName = 'pattern';
-    const open = (editor, database) => {
-      const initialState = {
-        pattern: '',
-        results: emojisFrom(database.listAll(), '', Optional.some(300))
-      };
-      const currentTab = Cell(ALL_CATEGORY);
-      const scan = dialogApi => {
-        const dialogData = dialogApi.getData();
-        const category = currentTab.get();
-        const candidates = database.listCategory(category);
-        const results = emojisFrom(candidates, dialogData[patternName], category === ALL_CATEGORY ? Optional.some(300) : Optional.none());
-        dialogApi.setData({ results });
-      };
-      const updateFilter = last(dialogApi => {
-        scan(dialogApi);
-      }, 200);
-      const searchField = {
-        label: 'Search',
-        type: 'input',
-        name: patternName
-      };
-      const resultsField = {
-        type: 'collection',
-        name: 'results'
-      };
-      const getInitialState = () => {
-        const body = {
-          type: 'tabpanel',
-          tabs: map$1(database.listCategories(), cat => ({
-            title: cat,
-            name: cat,
-            items: [
-              searchField,
-              resultsField
-            ]
-          }))
-        };
-        return {
-          title: 'Emojis',
-          size: 'normal',
-          body,
-          initialData: initialState,
-          onTabChange: (dialogApi, details) => {
-            currentTab.set(details.newTabName);
-            updateFilter.throttle(dialogApi);
-          },
-          onChange: updateFilter.throttle,
-          onAction: (dialogApi, actionData) => {
-            if (actionData.name === 'results') {
-              insertEmoticon(editor, actionData.value);
-              dialogApi.close();
-            }
-          },
-          buttons: [{
-              type: 'cancel',
-              text: 'Close',
-              primary: true
-            }]
-        };
-      };
-      const dialogApi = editor.windowManager.open(getInitialState());
-      dialogApi.focus(patternName);
-      if (!database.hasLoaded()) {
-        dialogApi.block('Loading emojis...');
-        database.waitForLoad().then(() => {
-          dialogApi.redial(getInitialState());
-          updateFilter.throttle(dialogApi);
-          dialogApi.focus(patternName);
-          dialogApi.unblock();
-        }).catch(_err => {
-          dialogApi.redial({
-            title: 'Emojis',
-            body: {
-              type: 'panel',
-              items: [{
-                  type: 'alertbanner',
-                  level: 'error',
-                  icon: 'warning',
-                  text: 'Could not load emojis'
-                }]
-            },
-            buttons: [{
-                type: 'cancel',
-                text: 'Close',
-                primary: true
-              }],
-            initialData: {
-              pattern: '',
-              results: []
-            }
-          });
-          dialogApi.focus(patternName);
-          dialogApi.unblock();
-        });
-      }
-    };
-
-    const register$1 = (editor, database) => {
-      editor.addCommand('mceEmoticons', () => open(editor, database));
-    };
-
-    const setup = editor => {
-      editor.on('PreInit', () => {
-        editor.parser.addAttributeFilter('data-emoticon', nodes => {
-          each$1(nodes, node => {
-            node.attr('data-mce-resize', 'false');
-            node.attr('data-mce-placeholder', '1');
-          });
-        });
-      });
-    };
-
-    const init = (editor, database) => {
-      editor.ui.registry.addAutocompleter('emoticons', {
-        trigger: ':',
-        columns: 'auto',
-        minChars: 2,
-        fetch: (pattern, maxResults) => database.waitForLoad().then(() => {
-          const candidates = database.listAll();
-          return emojisFrom(candidates, pattern, Optional.some(maxResults));
-        }),
-        onAction: (autocompleteApi, rng, value) => {
-          editor.selection.setRng(rng);
-          editor.insertContent(value);
-          autocompleteApi.hide();
-        }
-      });
-    };
-
-    const onSetupEditable = editor => api => {
-      const nodeChanged = () => {
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChanged);
-      nodeChanged();
-      return () => {
-        editor.off('NodeChange', nodeChanged);
-      };
-    };
-    const register = editor => {
-      const onAction = () => editor.execCommand('mceEmoticons');
-      editor.ui.registry.addButton('emoticons', {
-        tooltip: 'Emojis',
-        icon: 'emoji',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-      editor.ui.registry.addMenuItem('emoticons', {
-        text: 'Emojis...',
-        icon: 'emoji',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-    };
-
-    var Plugin = () => {
-      global$1.add('emoticons', (editor, pluginUrl) => {
-        register$2(editor, pluginUrl);
-        const databaseUrl = getEmojiDatabaseUrl(editor);
-        const databaseId = getEmojiDatabaseId(editor);
-        const database = initDatabase(editor, databaseUrl, databaseId);
-        register$1(editor, database);
-        register(editor);
-        init(editor, database);
-        setup(editor);
-        return { getAllEmojis: () => database.waitForLoad().then(() => database.listAll()) };
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
     const Cell = initial => {
       let value = initial;
       const get = () => {
@@ -40812,6 +40215,603 @@ tinymce.IconManager.add('default', {
         setup(editor, fullscreenState);
         editor.addShortcut('Meta+Shift+F', '', 'mceFullScreen');
         return get$5(fullscreenState);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const eq = t => a => t === a;
+    const isNull = eq(null);
+    const isUndefined = eq(undefined);
+    const isNullable = a => a === null || a === undefined;
+    const isNonNullable = a => !isNullable(a);
+
+    const noop = () => {
+    };
+    const constant = value => {
+      return () => {
+        return value;
+      };
+    };
+    const never = constant(false);
+
+    class Optional {
+      constructor(tag, value) {
+        this.tag = tag;
+        this.value = value;
+      }
+      static some(value) {
+        return new Optional(true, value);
+      }
+      static none() {
+        return Optional.singletonNone;
+      }
+      fold(onNone, onSome) {
+        if (this.tag) {
+          return onSome(this.value);
+        } else {
+          return onNone();
+        }
+      }
+      isSome() {
+        return this.tag;
+      }
+      isNone() {
+        return !this.tag;
+      }
+      map(mapper) {
+        if (this.tag) {
+          return Optional.some(mapper(this.value));
+        } else {
+          return Optional.none();
+        }
+      }
+      bind(binder) {
+        if (this.tag) {
+          return binder(this.value);
+        } else {
+          return Optional.none();
+        }
+      }
+      exists(predicate) {
+        return this.tag && predicate(this.value);
+      }
+      forall(predicate) {
+        return !this.tag || predicate(this.value);
+      }
+      filter(predicate) {
+        if (!this.tag || predicate(this.value)) {
+          return this;
+        } else {
+          return Optional.none();
+        }
+      }
+      getOr(replacement) {
+        return this.tag ? this.value : replacement;
+      }
+      or(replacement) {
+        return this.tag ? this : replacement;
+      }
+      getOrThunk(thunk) {
+        return this.tag ? this.value : thunk();
+      }
+      orThunk(thunk) {
+        return this.tag ? this : thunk();
+      }
+      getOrDie(message) {
+        if (!this.tag) {
+          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+        } else {
+          return this.value;
+        }
+      }
+      static from(value) {
+        return isNonNullable(value) ? Optional.some(value) : Optional.none();
+      }
+      getOrNull() {
+        return this.tag ? this.value : null;
+      }
+      getOrUndefined() {
+        return this.value;
+      }
+      each(worker) {
+        if (this.tag) {
+          worker(this.value);
+        }
+      }
+      toArray() {
+        return this.tag ? [this.value] : [];
+      }
+      toString() {
+        return this.tag ? `some(${ this.value })` : 'none()';
+      }
+    }
+    Optional.singletonNone = new Optional(false);
+
+    const exists = (xs, pred) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        if (pred(x, i)) {
+          return true;
+        }
+      }
+      return false;
+    };
+    const map$1 = (xs, f) => {
+      const len = xs.length;
+      const r = new Array(len);
+      for (let i = 0; i < len; i++) {
+        const x = xs[i];
+        r[i] = f(x, i);
+      }
+      return r;
+    };
+    const each$1 = (xs, f) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        f(x, i);
+      }
+    };
+
+    const Cell = initial => {
+      let value = initial;
+      const get = () => {
+        return value;
+      };
+      const set = v => {
+        value = v;
+      };
+      return {
+        get,
+        set
+      };
+    };
+
+    const last = (fn, rate) => {
+      let timer = null;
+      const cancel = () => {
+        if (!isNull(timer)) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      };
+      const throttle = (...args) => {
+        cancel();
+        timer = setTimeout(() => {
+          timer = null;
+          fn.apply(null, args);
+        }, rate);
+      };
+      return {
+        cancel,
+        throttle
+      };
+    };
+
+    const insertEmoticon = (editor, ch) => {
+      editor.insertContent(ch);
+    };
+
+    const keys = Object.keys;
+    const hasOwnProperty = Object.hasOwnProperty;
+    const each = (obj, f) => {
+      const props = keys(obj);
+      for (let k = 0, len = props.length; k < len; k++) {
+        const i = props[k];
+        const x = obj[i];
+        f(x, i);
+      }
+    };
+    const map = (obj, f) => {
+      return tupleMap(obj, (x, i) => ({
+        k: i,
+        v: f(x, i)
+      }));
+    };
+    const tupleMap = (obj, f) => {
+      const r = {};
+      each(obj, (x, i) => {
+        const tuple = f(x, i);
+        r[tuple.k] = tuple.v;
+      });
+      return r;
+    };
+    const has = (obj, key) => hasOwnProperty.call(obj, key);
+
+    const shallow = (old, nu) => {
+      return nu;
+    };
+    const baseMerge = merger => {
+      return (...objects) => {
+        if (objects.length === 0) {
+          throw new Error(`Can't merge zero objects`);
+        }
+        const ret = {};
+        for (let j = 0; j < objects.length; j++) {
+          const curObject = objects[j];
+          for (const key in curObject) {
+            if (has(curObject, key)) {
+              ret[key] = merger(ret[key], curObject[key]);
+            }
+          }
+        }
+        return ret;
+      };
+    };
+    const merge = baseMerge(shallow);
+
+    const singleton = doRevoke => {
+      const subject = Cell(Optional.none());
+      const revoke = () => subject.get().each(doRevoke);
+      const clear = () => {
+        revoke();
+        subject.set(Optional.none());
+      };
+      const isSet = () => subject.get().isSome();
+      const get = () => subject.get();
+      const set = s => {
+        revoke();
+        subject.set(Optional.some(s));
+      };
+      return {
+        clear,
+        isSet,
+        get,
+        set
+      };
+    };
+    const value = () => {
+      const subject = singleton(noop);
+      const on = f => subject.get().each(f);
+      return {
+        ...subject,
+        on
+      };
+    };
+
+    const checkRange = (str, substr, start) => substr === '' || str.length >= substr.length && str.substr(start, start + substr.length) === substr;
+    const contains = (str, substr, start = 0, end) => {
+      const idx = str.indexOf(substr, start);
+      if (idx !== -1) {
+        return isUndefined(end) ? true : idx + substr.length <= end;
+      } else {
+        return false;
+      }
+    };
+    const startsWith = (str, prefix) => {
+      return checkRange(str, prefix, 0);
+    };
+
+    var global = tinymce.util.Tools.resolve('tinymce.Resource');
+
+    const DEFAULT_ID = 'tinymce.plugins.emoticons';
+    const option = name => editor => editor.options.get(name);
+    const register$2 = (editor, pluginUrl) => {
+      const registerOption = editor.options.register;
+      registerOption('emoticons_database', {
+        processor: 'string',
+        default: 'emojis'
+      });
+      registerOption('emoticons_database_url', {
+        processor: 'string',
+        default: `${ pluginUrl }/js/${ getEmojiDatabase(editor) }${ editor.suffix }.js`
+      });
+      registerOption('emoticons_database_id', {
+        processor: 'string',
+        default: DEFAULT_ID
+      });
+      registerOption('emoticons_append', {
+        processor: 'object',
+        default: {}
+      });
+      registerOption('emoticons_images_url', {
+        processor: 'string',
+        default: 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/15.1.0/72x72/'
+      });
+    };
+    const getEmojiDatabase = option('emoticons_database');
+    const getEmojiDatabaseUrl = option('emoticons_database_url');
+    const getEmojiDatabaseId = option('emoticons_database_id');
+    const getAppendedEmoji = option('emoticons_append');
+    const getEmojiImageUrl = option('emoticons_images_url');
+
+    const ALL_CATEGORY = 'All';
+    const categoryNameMap = {
+      symbols: 'Symbols',
+      people: 'People',
+      animals_and_nature: 'Animals and Nature',
+      food_and_drink: 'Food and Drink',
+      activity: 'Activity',
+      travel_and_places: 'Travel and Places',
+      objects: 'Objects',
+      flags: 'Flags',
+      user: 'User Defined'
+    };
+    const translateCategory = (categories, name) => has(categories, name) ? categories[name] : name;
+    const getUserDefinedEmoji = editor => {
+      const userDefinedEmoticons = getAppendedEmoji(editor);
+      return map(userDefinedEmoticons, value => ({
+        keywords: [],
+        category: 'user',
+        ...value
+      }));
+    };
+    const initDatabase = (editor, databaseUrl, databaseId) => {
+      const categories = value();
+      const all = value();
+      const emojiImagesUrl = getEmojiImageUrl(editor);
+      const getEmoji = lib => {
+        if (startsWith(lib.char, '<img')) {
+          return lib.char.replace(/src="([^"]+)"/, (match, url) => `src="${ emojiImagesUrl }${ url }"`);
+        } else {
+          return lib.char;
+        }
+      };
+      const processEmojis = emojis => {
+        const cats = {};
+        const everything = [];
+        each(emojis, (lib, title) => {
+          const entry = {
+            title,
+            keywords: lib.keywords,
+            char: getEmoji(lib),
+            category: translateCategory(categoryNameMap, lib.category)
+          };
+          const current = cats[entry.category] !== undefined ? cats[entry.category] : [];
+          cats[entry.category] = current.concat([entry]);
+          everything.push(entry);
+        });
+        categories.set(cats);
+        all.set(everything);
+      };
+      editor.on('init', () => {
+        global.load(databaseId, databaseUrl).then(emojis => {
+          const userEmojis = getUserDefinedEmoji(editor);
+          processEmojis(merge(emojis, userEmojis));
+        }, err => {
+          console.log(`Failed to load emojis: ${ err }`);
+          categories.set({});
+          all.set([]);
+        });
+      });
+      const listCategory = category => {
+        if (category === ALL_CATEGORY) {
+          return listAll();
+        }
+        return categories.get().bind(cats => Optional.from(cats[category])).getOr([]);
+      };
+      const listAll = () => all.get().getOr([]);
+      const listCategories = () => [ALL_CATEGORY].concat(keys(categories.get().getOr({})));
+      const waitForLoad = () => {
+        if (hasLoaded()) {
+          return Promise.resolve(true);
+        } else {
+          return new Promise((resolve, reject) => {
+            let numRetries = 15;
+            const interval = setInterval(() => {
+              if (hasLoaded()) {
+                clearInterval(interval);
+                resolve(true);
+              } else {
+                numRetries--;
+                if (numRetries < 0) {
+                  console.log('Could not load emojis from url: ' + databaseUrl);
+                  clearInterval(interval);
+                  reject(false);
+                }
+              }
+            }, 100);
+          });
+        }
+      };
+      const hasLoaded = () => categories.isSet() && all.isSet();
+      return {
+        listCategories,
+        hasLoaded,
+        waitForLoad,
+        listAll,
+        listCategory
+      };
+    };
+
+    const emojiMatches = (emoji, lowerCasePattern) => contains(emoji.title.toLowerCase(), lowerCasePattern) || exists(emoji.keywords, k => contains(k.toLowerCase(), lowerCasePattern));
+    const emojisFrom = (list, pattern, maxResults) => {
+      const matches = [];
+      const lowerCasePattern = pattern.toLowerCase();
+      const reachedLimit = maxResults.fold(() => never, max => size => size >= max);
+      for (let i = 0; i < list.length; i++) {
+        if (pattern.length === 0 || emojiMatches(list[i], lowerCasePattern)) {
+          matches.push({
+            value: list[i].char,
+            text: list[i].title,
+            icon: list[i].char
+          });
+          if (reachedLimit(matches.length)) {
+            break;
+          }
+        }
+      }
+      return matches;
+    };
+
+    const patternName = 'pattern';
+    const open = (editor, database) => {
+      const initialState = {
+        pattern: '',
+        results: emojisFrom(database.listAll(), '', Optional.some(300))
+      };
+      const currentTab = Cell(ALL_CATEGORY);
+      const scan = dialogApi => {
+        const dialogData = dialogApi.getData();
+        const category = currentTab.get();
+        const candidates = database.listCategory(category);
+        const results = emojisFrom(candidates, dialogData[patternName], category === ALL_CATEGORY ? Optional.some(300) : Optional.none());
+        dialogApi.setData({ results });
+      };
+      const updateFilter = last(dialogApi => {
+        scan(dialogApi);
+      }, 200);
+      const searchField = {
+        label: 'Search',
+        type: 'input',
+        name: patternName
+      };
+      const resultsField = {
+        type: 'collection',
+        name: 'results'
+      };
+      const getInitialState = () => {
+        const body = {
+          type: 'tabpanel',
+          tabs: map$1(database.listCategories(), cat => ({
+            title: cat,
+            name: cat,
+            items: [
+              searchField,
+              resultsField
+            ]
+          }))
+        };
+        return {
+          title: 'Emojis',
+          size: 'normal',
+          body,
+          initialData: initialState,
+          onTabChange: (dialogApi, details) => {
+            currentTab.set(details.newTabName);
+            updateFilter.throttle(dialogApi);
+          },
+          onChange: updateFilter.throttle,
+          onAction: (dialogApi, actionData) => {
+            if (actionData.name === 'results') {
+              insertEmoticon(editor, actionData.value);
+              dialogApi.close();
+            }
+          },
+          buttons: [{
+              type: 'cancel',
+              text: 'Close',
+              primary: true
+            }]
+        };
+      };
+      const dialogApi = editor.windowManager.open(getInitialState());
+      dialogApi.focus(patternName);
+      if (!database.hasLoaded()) {
+        dialogApi.block('Loading emojis...');
+        database.waitForLoad().then(() => {
+          dialogApi.redial(getInitialState());
+          updateFilter.throttle(dialogApi);
+          dialogApi.focus(patternName);
+          dialogApi.unblock();
+        }).catch(_err => {
+          dialogApi.redial({
+            title: 'Emojis',
+            body: {
+              type: 'panel',
+              items: [{
+                  type: 'alertbanner',
+                  level: 'error',
+                  icon: 'warning',
+                  text: 'Could not load emojis'
+                }]
+            },
+            buttons: [{
+                type: 'cancel',
+                text: 'Close',
+                primary: true
+              }],
+            initialData: {
+              pattern: '',
+              results: []
+            }
+          });
+          dialogApi.focus(patternName);
+          dialogApi.unblock();
+        });
+      }
+    };
+
+    const register$1 = (editor, database) => {
+      editor.addCommand('mceEmoticons', () => open(editor, database));
+    };
+
+    const setup = editor => {
+      editor.on('PreInit', () => {
+        editor.parser.addAttributeFilter('data-emoticon', nodes => {
+          each$1(nodes, node => {
+            node.attr('data-mce-resize', 'false');
+            node.attr('data-mce-placeholder', '1');
+          });
+        });
+      });
+    };
+
+    const init = (editor, database) => {
+      editor.ui.registry.addAutocompleter('emoticons', {
+        trigger: ':',
+        columns: 'auto',
+        minChars: 2,
+        fetch: (pattern, maxResults) => database.waitForLoad().then(() => {
+          const candidates = database.listAll();
+          return emojisFrom(candidates, pattern, Optional.some(maxResults));
+        }),
+        onAction: (autocompleteApi, rng, value) => {
+          editor.selection.setRng(rng);
+          editor.insertContent(value);
+          autocompleteApi.hide();
+        }
+      });
+    };
+
+    const onSetupEditable = editor => api => {
+      const nodeChanged = () => {
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChanged);
+      nodeChanged();
+      return () => {
+        editor.off('NodeChange', nodeChanged);
+      };
+    };
+    const register = editor => {
+      const onAction = () => editor.execCommand('mceEmoticons');
+      editor.ui.registry.addButton('emoticons', {
+        tooltip: 'Emojis',
+        icon: 'emoji',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+      editor.ui.registry.addMenuItem('emoticons', {
+        text: 'Emojis...',
+        icon: 'emoji',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+    };
+
+    var Plugin = () => {
+      global$1.add('emoticons', (editor, pluginUrl) => {
+        register$2(editor, pluginUrl);
+        const databaseUrl = getEmojiDatabaseUrl(editor);
+        const databaseId = getEmojiDatabaseId(editor);
+        const database = initDatabase(editor, databaseUrl, databaseId);
+        register$1(editor, database);
+        register(editor);
+        init(editor, database);
+        setup(editor);
+        return { getAllEmojis: () => database.waitForLoad().then(() => database.listAll()) };
       });
     };
 
