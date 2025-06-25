@@ -152,6 +152,7 @@ var KTImportCampaign = function () {
 								// Set variables
 								let nccLocation = "";
 								let nccToken = "";
+								let username = "";
 								const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
 								cookies.forEach(cookie => {
 									if (cookie.startsWith("nccLocation=")) {
@@ -159,6 +160,9 @@ var KTImportCampaign = function () {
 									}
 									if (cookie.startsWith("nccToken=")) {
 										nccToken = cookie.substring(9);
+									}
+									if (cookie.startsWith("username=")) {
+										username = cookie.substring(9);
 									}
 								});
 								let importFile = document.getElementById("import_file").files[0];
@@ -234,6 +238,7 @@ var KTImportCampaign = function () {
 														"action": action,
 														"nccLocation": nccLocation,
 														"nccToken": nccToken,
+														"username": username,
 														"campaigns": campaigns.value,
 														"dialPlans": dialPlans.value,
 														"templates": templates.value,

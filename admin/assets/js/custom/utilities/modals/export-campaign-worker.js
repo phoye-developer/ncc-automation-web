@@ -1,5 +1,6 @@
 importScripts("inc/config-dispositions.js");
 importScripts("inc/config-queues.js");
+importScripts("inc/datadog.js");
 importScripts("inc/ncc-business-events.js");
 importScripts("inc/ncc-campaign-goals.js");
 importScripts("inc/ncc-campaign-scripts.js");
@@ -56,6 +57,7 @@ onmessage = (event) => {
     var campaignExport = JSON.parse(event.data);
     var nccLocation = campaignExport.nccLocation;
     var nccToken = campaignExport.nccToken;
+    var username = campaignExport.username;
     var campaignId = campaignExport.campaignId;
     var reportIds = campaignExport.reportIds;
     var homeTabIds = campaignExport.homeTabIds;
@@ -175,6 +177,17 @@ onmessage = (event) => {
 
                     // Check if campaign found
                     if (Object.keys(campaign).length > 0) {
+
+                        postEvent(
+                            "info",
+                            nccLocation,
+                            nccToken,
+                            "normal",
+                            "exportcampaign",
+                            `Export of campaign ${campaign.name} started.`,
+                            "Export Campaign Started",
+                            username
+                        );
 
                         // Add campaign to config
                         config.campaigns.push(campaign);
@@ -587,6 +600,16 @@ onmessage = (event) => {
             config.reports.push(report);
             postMessage(`[INFO] Report "${report.name}" found.`);
         } else {
+            postEvent(
+                "error",
+                nccLocation,
+                nccToken,
+                "normal",
+                "exportcampaign",
+                `Report with ID ${reportId} not found.`,
+                "Export Campaign Error",
+                username
+            );
             postMessage(`[ERROR] Report with ID "${reportId}" not found.`);
         }
     });
@@ -618,6 +641,16 @@ onmessage = (event) => {
                 });
             }
         } else {
+            postEvent(
+                "error",
+                nccLocation,
+                nccToken,
+                "normal",
+                "exportcampaign",
+                `Home tab with ID ${homeTabId} not found.`,
+                "Export Campaign Error",
+                username
+            );
             postMessage(`[ERROR] Home tab with ID "${homeTabId}" not found.`);
         }
     });
@@ -628,6 +661,17 @@ onmessage = (event) => {
 
     const endTime = performance.now();
     const durationMs = endTime - startTime;
+
+    postEvent(
+        "success",
+        nccLocation,
+        nccToken,
+        "normal",
+        "exportcampaign",
+        `Export of campaign with ID ${campaignId} completed.`,
+        "Export Campaign Completed",
+        username
+    );
 
     postMessage(`[INFO] Script complete.`);
     postMessage(`[INFO] Duration: ${formatDuration(durationMs)}`);
@@ -691,7 +735,7 @@ onmessage = (event) => {
                     config.workflows.push(workflow);
                     postMessage(`[INFO] Workflow "${workflow.name}" found.`);
                 } else {
-                    postMessage(`[ERROR] Function with ID "${workflowId}" not found.`);
+                    postMessage(`[ERROR] Workflow with ID "${workflowId}" not found.`);
                 }
             }
         }

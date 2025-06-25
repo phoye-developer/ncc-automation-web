@@ -144,6 +144,7 @@ var KTExportCampaign = function () {
 								// Set variables
 								let nccLocation = "";
 								let nccToken = "";
+								let username = "";
 								const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
 								cookies.forEach(cookie => {
 									if (cookie.startsWith("nccLocation=")) {
@@ -151,6 +152,9 @@ var KTExportCampaign = function () {
 									}
 									if (cookie.startsWith("nccToken=")) {
 										nccToken = cookie.substring(9);
+									}
+									if (cookie.startsWith("username=")) {
+										username = cookie.substring(9);
 									}
 								});
 								let campaign = stepper.querySelector('[name="campaign"]');
@@ -225,6 +229,7 @@ var KTExportCampaign = function () {
 												{
 													"nccLocation": nccLocation,
 													"nccToken": nccToken,
+													"username": username,
 													"campaignId": campaign.value,
 													"reportIds": report_values,
 													"homeTabIds": home_tab_values,

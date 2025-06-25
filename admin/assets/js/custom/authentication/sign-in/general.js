@@ -135,6 +135,7 @@ var KTSigninGeneral = function () {
 
                                 let nccLocation = "";
                                 let nccToken = "";
+                                let username = "";
 
                                 const data = JSON.parse(this.responseText);
 
@@ -151,8 +152,16 @@ var KTSigninGeneral = function () {
                                     nccToken = data.token;
                                     document.cookie = `nccToken=${nccToken}; expires=${cookieExpiry}; path=/`;
                                 }
+                                if (data.token) {
+                                    username = form.querySelector('[name="email"]').value;
+                                    document.cookie = `username=${username}; expires=${cookieExpiry}; path=/`;
+                                }
 
-                                if (nccLocation != "" && nccToken != "") {
+                                if (
+                                    nccLocation != ""
+                                    && nccToken != ""
+                                    && username != ""
+                                ) {
                                     const redirectUrl = form.getAttribute('data-kt-redirect-url');
 
                                     if (redirectUrl) {

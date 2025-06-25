@@ -1,5 +1,6 @@
 importScripts("inc/config-dispositions.js");
 importScripts("inc/config-queues.js");
+importScripts("inc/datadog.js");
 importScripts("inc/ncc-business-events.js");
 importScripts("inc/ncc-campaign-goals.js");
 importScripts("inc/ncc-campaign-scripts.js");
@@ -57,6 +58,7 @@ onmessage = (event) => {
     var action = config.action;
     var nccLocation = config.nccLocation;
     var nccToken = config.nccToken;
+    var username = config.username;
     var campaigns = config.campaigns;
     var dialPlans = config.dialPlans;
     var templates = config.templates;
@@ -103,6 +105,17 @@ onmessage = (event) => {
     // ==============================
 
     if (action == "review") {
+
+        postEvent(
+            "info",
+            nccLocation,
+            nccToken,
+            "normal",
+            "importcampaign",
+            `Review of one or more campaigns started.`,
+            "Review Started",
+            username
+        );
 
         // Business events
         if ("businessEvents" in importData) {
@@ -1339,6 +1352,30 @@ onmessage = (event) => {
             postMessage(`[INFO] No existing objects will be updated as a result of this import.`);
         }
 
+        if (fileIsValid) {
+            postEvent(
+                "success",
+                nccLocation,
+                nccToken,
+                "normal",
+                "importcampaign",
+                `Review of one or more campaigns completed.`,
+                "Review Completed",
+                username
+            );
+        } else {
+            postEvent(
+                "error",
+                nccLocation,
+                nccToken,
+                "normal",
+                "importcampaign",
+                `Review of one or more campaigns failed.`,
+                "Review Failed",
+                username
+            );
+        }
+
         // End Review
         postMessage({
             "action": "review",
@@ -1352,6 +1389,17 @@ onmessage = (event) => {
     // ==============================
 
     if (action == "submit") {
+
+        postEvent(
+            "info",
+            nccLocation,
+            nccToken,
+            "normal",
+            "importcampaign",
+            `Import of one or more campaigns started.`,
+            "Import Started",
+            username
+        );
 
         // Business events
         if (businessEvents != "ignore") {
@@ -4071,6 +4119,30 @@ onmessage = (event) => {
             }
         } else {
             postMessage(`[INFO] Workflows ignored.`);
+        }
+
+        if (errorMessage === "") {
+            postEvent(
+                "success",
+                nccLocation,
+                nccToken,
+                "normal",
+                "importcampaign",
+                `Import of one or more campaigns completed.`,
+                "Import Completed",
+                username
+            );
+        } else {
+            postEvent(
+                "warning",
+                nccLocation,
+                nccToken,
+                "normal",
+                "importcampaign",
+                `Import of one or more campaigns completed, but with errors.`,
+                "Import Completed",
+                username
+            );
         }
 
         // End import
