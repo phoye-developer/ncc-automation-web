@@ -2,7 +2,7 @@
 
 http_response_code(500);
 
-require('../../auth_info.php');
+require('../../../auth_info.php');
 
 // Get inbound request data
 $request_body = file_get_contents('php://input');
