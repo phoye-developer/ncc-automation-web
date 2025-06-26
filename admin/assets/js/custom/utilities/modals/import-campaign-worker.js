@@ -97,6 +97,7 @@ onmessage = (event) => {
 
     // Initial messages
     var updateMessage = "";
+    var warningMessage = "";
     var errorMessage = "";
     var fileIsValid = true;
 
@@ -1434,7 +1435,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(businessEvent).length > 0) {
-                                postMessage(`[WARNING] Business event with name "${existingBusinessEvent.name}" already exists.`);
+                                warningMessage += `\tBusiness event with name "${existingBusinessEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Business event with name "${existingBusinessEvent.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create business event
@@ -1458,19 +1460,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (businessEvents == "update") {
 
-                        // Update business event
-                        let success = upsertBusinessEvent(
+                        // Get business event
+                        let businessEvent = getBusinessEventById(
                             nccLocation,
                             nccToken,
-                            existingBusinessEvent
+                            existingBusinessEvent._id
                         );
 
-                        // Check if business event updated
-                        if (success) {
-                            postMessage(`[INFO] Business event "${existingBusinessEvent.name}" updated.`);
+                        if (Object.keys(businessEvent).length > 0) {
+
+                            // Update business event
+                            let success = upsertBusinessEvent(
+                                nccLocation,
+                                nccToken,
+                                existingBusinessEvent
+                            );
+
+                            // Check if business event updated
+                            if (success) {
+                                postMessage(`[INFO] Business event "${existingBusinessEvent.name}" updated.`);
+                            } else {
+                                errorMessage += `\tBusiness event "${existingBusinessEvent.name}" not updated.\n`;
+                                postMessage(`[ERROR] Business event "${existingBusinessEvent.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tBusiness event "${existingBusinessEvent.name}" not updated.\n`;
-                            postMessage(`[ERROR] Business event "${existingBusinessEvent.name}" not updated.`);
+
+                            // Check if business event with same name already exists
+                            let businessEvent = getBusinessEventByName(
+                                nccLocation,
+                                nccToken,
+                                existingBusinessEvent.name
+                            );
+
+                            if (Object.keys(businessEvent).length > 0) {
+                                warningMessage += `\tBusiness event with name "${existingBusinessEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Business event with name "${existingBusinessEvent.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create business event
+                                let success = upsertBusinessEvent(
+                                    nccLocation,
+                                    nccToken,
+                                    existingBusinessEvent
+                                );
+
+                                // Check if business event created
+                                if (success) {
+                                    postMessage(`[INFO] Business event "${existingBusinessEvent.name}" created.`);
+                                } else {
+                                    errorMessage += `\tBusiness event "${existingBusinessEvent.name}" not created.\n`;
+                                    postMessage(`[ERROR] Business event "${existingBusinessEvent.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1514,7 +1555,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaignGoal).length > 0) {
-                                postMessage(`[WARNING] Campaign goal with name "${existingCampaignGoal.name}" already exists.`);
+                                warningMessage += `\tCampaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign goal
@@ -1538,19 +1580,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (campaignGoals == "update") {
 
-                        // Update campaign goal
-                        let success = upsertCampaignGoal(
+                        // Get campaign goal
+                        let campaignGoal = getCampaignGoalsById(
                             nccLocation,
                             nccToken,
-                            existingCampaignGoal
+                            existingCampaignGoal._id
                         );
 
-                        // Check if campaign goal updated
-                        if (success) {
-                            postMessage(`[INFO] Campaign goal "${existingCampaignGoal.name}" updated.`);
+                        if (Object.keys(campaignGoal).length > 0) {
+
+                            // Update campaign goal
+                            let success = upsertCampaignGoal(
+                                nccLocation,
+                                nccToken,
+                                existingCampaignGoal
+                            );
+
+                            // Check if campaign goal updated
+                            if (success) {
+                                postMessage(`[INFO] Campaign goal "${existingCampaignGoal.name}" updated.`);
+                            } else {
+                                errorMessage += `\tCampaign goal "${existingCampaignGoal.name}" not updated.\n`;
+                                postMessage(`[ERROR] Campaign goal "${existingCampaignGoal.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tCampaign goal "${existingCampaignGoal.name}" not updated.\n`;
-                            postMessage(`[ERROR] Campaign goal "${existingCampaignGoal.name}" not updated.`);
+
+                            // Check if campaign goal with same name already exists
+                            let campaignGoal = getCampaignGoalByName(
+                                nccLocation,
+                                nccToken,
+                                existingCampaignGoal.name
+                            );
+
+                            if (Object.keys(campaignGoal).length > 0) {
+                                warningMessage += `\tCampaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create campaign goal
+                                let success = upsertCampaignGoal(
+                                    nccLocation,
+                                    nccToken,
+                                    existingCampaignGoal
+                                );
+
+                                // Check if campaign goal created
+                                if (success) {
+                                    postMessage(`[INFO] Campaign goal "${existingCampaignGoal.name}" created.`);
+                                } else {
+                                    errorMessage += `\tCampaign goal "${existingCampaignGoal.name}" not created.\n`;
+                                    postMessage(`[ERROR] Campaign goal "${existingCampaignGoal.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1594,7 +1675,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaignScript).length > 0) {
-                                postMessage(`[WARNING] Campaign script with name "${existingCampaignScript.name}" already exists.`);
+                                warningMessage += `\tCampaign script with name "${existingCampaignScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign script with name "${existingCampaignScript.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign script
@@ -1618,19 +1700,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (campaignScripts == "update") {
 
-                        // Update campaign script
-                        let success = upsertCampaignScript(
+                        // Get campaign script
+                        let campaignScript = getCampaignScriptById(
                             nccLocation,
                             nccToken,
-                            existingCampaignScript
+                            existingCampaignScript._id
                         );
 
-                        // Check if campaign script updated
-                        if (success) {
-                            postMessage(`[INFO] Campaign script "${existingCampaignScript.name}" updated.`);
+                        if (Object.keys(campaignScript).length > 0) {
+
+                            // Update campaign script
+                            let success = upsertCampaignScript(
+                                nccLocation,
+                                nccToken,
+                                existingCampaignScript
+                            );
+
+                            // Check if campaign script updated
+                            if (success) {
+                                postMessage(`[INFO] Campaign script "${existingCampaignScript.name}" updated.`);
+                            } else {
+                                errorMessage += `\tCampaign script "${existingCampaignScript.name}" not updated.\n`;
+                                postMessage(`[ERROR] Campaign script "${existingCampaignScript.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tCampaign script "${existingCampaignScript.name}" not updated.\n`;
-                            postMessage(`[ERROR] Campaign script "${existingCampaignScript.name}" not updated.`);
+
+                            // Check if campaign script with same name already exists
+                            let campaignScript = getCampaignScriptByName(
+                                nccLocation,
+                                nccToken,
+                                existingCampaignScript.name
+                            );
+
+                            if (Object.keys(campaignScript).length > 0) {
+                                warningMessage += `\tCampaign script with name "${existingCampaignScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign script with name "${existingCampaignScript.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create campaign script
+                                let success = upsertCampaignScript(
+                                    nccLocation,
+                                    nccToken,
+                                    existingCampaignScript
+                                );
+
+                                // Check if campaign script created
+                                if (success) {
+                                    postMessage(`[INFO] Campaign script "${existingCampaignScript.name}" created.`);
+                                } else {
+                                    errorMessage += `\tCampaign script "${existingCampaignScript.name}" not created.\n`;
+                                    postMessage(`[ERROR] Campaign script "${existingCampaignScript.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1674,7 +1795,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaign).length > 0) {
-                                postMessage(`[WARNING] Campaign with name "${existingCampaign.name}" already exists.`);
+                                warningMessage += `\tCampaign with name "${existingCampaign.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign with name "${existingCampaign.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign
@@ -1698,19 +1820,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (campaigns == "update") {
 
-                        // Update campaign
-                        let success = upsertCampaign(
+                        // Get campaign
+                        let campaign = getCampaignById(
                             nccLocation,
                             nccToken,
-                            existingCampaign
+                            existingCampaign._id
                         );
 
-                        // Check if campaign updated
-                        if (success) {
-                            postMessage(`[INFO] Campaign "${existingCampaign.name}" updated.`);
+                        if (Object.keys(campaign).length > 0) {
+
+                            // Update campaign
+                            let success = upsertCampaign(
+                                nccLocation,
+                                nccToken,
+                                existingCampaign
+                            );
+
+                            // Check if campaign updated
+                            if (success) {
+                                postMessage(`[INFO] Campaign "${existingCampaign.name}" updated.`);
+                            } else {
+                                errorMessage += `\tCampaign "${existingCampaign.name}" not updated.\n`;
+                                postMessage(`[ERROR] Campaign "${existingCampaign.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tCampaign "${existingCampaign.name}" not updated.\n`;
-                            postMessage(`[ERROR] Campaign "${existingCampaign.name}" not updated.`);
+
+                            // Check if campaign with same name already exists
+                            let campaign = getCampaignByName(
+                                nccLocation,
+                                nccToken,
+                                existingCampaign.name
+                            );
+
+                            if (Object.keys(campaign).length > 0) {
+                                warningMessage += `\tCampaign with name "${existingCampaign.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign with name "${existingCampaign.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create campaign
+                                let success = upsertCampaign(
+                                    nccLocation,
+                                    nccToken,
+                                    existingCampaign
+                                );
+
+                                // Check if campaign created
+                                if (success) {
+                                    postMessage(`[INFO] Campaign "${existingCampaign.name}" created.`);
+                                } else {
+                                    errorMessage += `\tCampaign "${existingCampaign.name}" not created.\n`;
+                                    postMessage(`[ERROR] Campaign "${existingCampaign.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1754,7 +1915,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(category).length > 0) {
-                                postMessage(`[WARNING] Category with name "${existingCategory.name}" already exists.`);
+                                warningMessage += `\tCategory with name "${existingCategory.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category with name "${existingCategory.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create category
@@ -1778,19 +1940,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (categories == "update") {
 
-                        // Update category
-                        let success = upsertCategory(
+                        // Get category
+                        let category = getCategoryById(
                             nccLocation,
                             nccToken,
-                            existingCategory
+                            existingCategory._id
                         );
 
-                        // Check if category updated
-                        if (success) {
-                            postMessage(`[INFO] Category "${existingCategory.name}" updated.`);
+                        if (Object.keys(category).length > 0) {
+
+                            // Update category
+                            let success = upsertCategory(
+                                nccLocation,
+                                nccToken,
+                                existingCategory
+                            );
+
+                            // Check if category updated
+                            if (success) {
+                                postMessage(`[INFO] Category "${existingCategory.name}" updated.`);
+                            } else {
+                                errorMessage += `\tCategory "${existingCategory.name}" not updated.\n`;
+                                postMessage(`[ERROR] Category "${existingCategory.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tCategory "${existingCategory.name}" not updated.\n`;
-                            postMessage(`[ERROR] Category "${existingCategory.name}" not updated.`);
+
+                            // Check if category with same name already exists
+                            let category = getCategoryByName(
+                                nccLocation,
+                                nccToken,
+                                existingCategory.name
+                            );
+
+                            if (Object.keys(category).length > 0) {
+                                warningMessage += `\tCategory with name "${existingCategory.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category with name "${existingCategory.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create category
+                                let success = upsertCategory(
+                                    nccLocation,
+                                    nccToken,
+                                    existingCategory
+                                );
+
+                                // Check if category created
+                                if (success) {
+                                    postMessage(`[INFO] Category "${existingCategory.name}" created.`);
+                                } else {
+                                    errorMessage += `\tCategory "${existingCategory.name}" not created.\n`;
+                                    postMessage(`[ERROR] Category "${existingCategory.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1834,7 +2035,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(categorySummary).length > 0) {
-                                postMessage(`[WARNING] Category summary with name "${existingCategorySummary.name}" already exists.`);
+                                warningMessage += `\tCategory summary with name "${existingCategorySummary.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category summary with name "${existingCategorySummary.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create category summary
@@ -1858,19 +2060,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (categorySummaries == "update") {
 
-                        // Update category summary
-                        let success = upsertCategorySummary(
+                        // Get category summary
+                        let categorySummary = getCategorySummaryById(
                             nccLocation,
                             nccToken,
-                            existingCategorySummary
+                            existingCategorySummary._id
                         );
 
-                        // Check if category summary updated
-                        if (success) {
-                            postMessage(`[INFO] Category summary "${existingCategorySummary.name}" updated.`);
+                        if (Object.keys(categorySummary).length > 0) {
+
+                            // Update category summary
+                            let success = upsertCategorySummary(
+                                nccLocation,
+                                nccToken,
+                                existingCategorySummary
+                            );
+
+                            // Check if category summary updated
+                            if (success) {
+                                postMessage(`[INFO] Category summary "${existingCategorySummary.name}" updated.`);
+                            } else {
+                                errorMessage += `\tCategory summary "${existingCategorySummary.name}" not updated.\n`;
+                                postMessage(`[ERROR] Category summary "${existingCategorySummary.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tCategory summary "${existingCategorySummary.name}" not updated.\n`;
-                            postMessage(`[ERROR] Category summary "${existingCategorySummary.name}" not updated.`);
+
+                            // Check if category summary with same name already exists
+                            let categorySummary = getCategorySummaryByName(
+                                nccLocation,
+                                nccToken,
+                                existingCategorySummary.name
+                            );
+
+                            if (Object.keys(categorySummary).length > 0) {
+                                warningMessage += `\tCategory summary with name "${existingCategorySummary.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category summary with name "${existingCategorySummary.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create category summary
+                                let success = upsertCategorySummary(
+                                    nccLocation,
+                                    nccToken,
+                                    existingCategorySummary
+                                );
+
+                                // Check if category summary created
+                                if (success) {
+                                    postMessage(`[INFO] Category summary "${existingCategorySummary.name}" created.`);
+                                } else {
+                                    errorMessage += `\tCategory summary "${existingCategorySummary.name}" not created.\n`;
+                                    postMessage(`[ERROR] Category summary "${existingCategorySummary.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1914,7 +2155,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(classification).length > 0) {
-                                postMessage(`[WARNING] Classification with name "${existingClassification.name}" already exists.`);
+                                warningMessage += `\tClassification with name "${existingClassification.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Classification with name "${existingClassification.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create classification
@@ -1938,19 +2180,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (classifications == "update") {
 
-                        // Update classification
-                        let success = upsertClassification(
+                        // Get classification
+                        let classification = getClassificationById(
                             nccLocation,
                             nccToken,
-                            existingClassification
+                            existingClassification._id
                         );
 
-                        // Check if classification updated
-                        if (success) {
-                            postMessage(`[INFO] Classification "${existingClassification.name}" updated.`);
+                        if (Object.keys(classification).length > 0) {
+
+                            // Update classification
+                            let success = upsertClassification(
+                                nccLocation,
+                                nccToken,
+                                existingClassification
+                            );
+
+                            // Check if classification updated
+                            if (success) {
+                                postMessage(`[INFO] Classification "${existingClassification.name}" updated.`);
+                            } else {
+                                errorMessage += `\tClassification "${existingClassification.name}" not updated.\n`;
+                                postMessage(`[ERROR] Classification "${existingClassification.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tClassification "${existingClassification.name}" not updated.\n`;
-                            postMessage(`[ERROR] Classification "${existingClassification.name}" not updated.`);
+
+                            // Check if classification with same name already exists
+                            let classification = getClassificationByName(
+                                nccLocation,
+                                nccToken,
+                                existingClassification.name
+                            );
+
+                            if (Object.keys(classification).length > 0) {
+                                warningMessage += `\tClassification with name "${existingClassification.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Classification with name "${existingClassification.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create classification
+                                let success = upsertClassification(
+                                    nccLocation,
+                                    nccToken,
+                                    existingClassification
+                                );
+
+                                // Check if classification created
+                                if (success) {
+                                    postMessage(`[INFO] Classification "${existingClassification.name}" created.`);
+                                } else {
+                                    errorMessage += `\tClassification "${existingClassification.name}" not created.\n`;
+                                    postMessage(`[ERROR] Classification "${existingClassification.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -1994,7 +2275,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(dashboard).length > 0) {
-                                postMessage(`[WARNING] Dashboard with name "${existingDashboard.name}" already exists.`);
+                                warningMessage += `\tDashboard with name "${existingDashboard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dashboard with name "${existingDashboard.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create dashboard
@@ -2018,19 +2300,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (dashboards == "update") {
 
-                        // Update dashboard
-                        let success = upsertDashboard(
+                        // Get dashboard
+                        let dashboard = getDashboardById(
                             nccLocation,
                             nccToken,
-                            existingDashboard
+                            existingDashboard._id
                         );
 
-                        // Check if dashboard updated
-                        if (success) {
-                            postMessage(`[INFO] Dashboard "${existingDashboard.name}" updated.`);
+                        if (Object.keys(dashboard).length > 0) {
+
+                            // Update dashboard
+                            let success = upsertDashboard(
+                                nccLocation,
+                                nccToken,
+                                existingDashboard
+                            );
+
+                            // Check if dashboard updated
+                            if (success) {
+                                postMessage(`[INFO] Dashboard "${existingDashboard.name}" updated.`);
+                            } else {
+                                errorMessage += `\tDashboard "${existingDashboard.name}" not updated.\n`;
+                                postMessage(`[ERROR] Dashboard "${existingDashboard.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tDashboard "${existingDashboard.name}" not updated.\n`;
-                            postMessage(`[ERROR] Dashboard "${existingDashboard.name}" not updated.`);
+
+                            // Check if dashboard with same name already exists
+                            let dashboard = getDashboardByName(
+                                nccLocation,
+                                nccToken,
+                                existingDashboard.name
+                            );
+
+                            if (Object.keys(dashboard).length > 0) {
+                                warningMessage += `\tDashboard with name "${existingDashboard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dashboard with name "${existingDashboard.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create dashboard
+                                let success = upsertDashboard(
+                                    nccLocation,
+                                    nccToken,
+                                    existingDashboard
+                                );
+
+                                // Check if dashboard created
+                                if (success) {
+                                    postMessage(`[INFO] Dashboard "${existingDashboard.name}" created.`);
+                                } else {
+                                    errorMessage += `\tDashboard "${existingDashboard.name}" not created.\n`;
+                                    postMessage(`[ERROR] Dashboard "${existingDashboard.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2074,7 +2395,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(dialPlan).length > 0) {
-                                postMessage(`[WARNING] Dial plan with name "${existingDialPlan.name}" already exists.`);
+                                warningMessage += `\tDial plan with name "${existingDialPlan.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dial plan with name "${existingDialPlan.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create dial plan
@@ -2098,19 +2420,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (dialPlans == "update") {
 
-                        // Update dial plan
-                        let success = upsertDialPlan(
+                        // Get dial plan
+                        let dialPlan = getDialPlanById(
                             nccLocation,
                             nccToken,
-                            existingDialPlan
+                            existingDialPlan._id
                         );
 
-                        // Check if dial plan updated
-                        if (success) {
-                            postMessage(`[INFO] Dial plan "${existingDialPlan.name}" updated.`);
+                        if (Object.keys(dialPlan).length > 0) {
+
+                            // Update dial plan
+                            let success = upsertDialPlan(
+                                nccLocation,
+                                nccToken,
+                                existingDialPlan
+                            );
+
+                            // Check if dial plan updated
+                            if (success) {
+                                postMessage(`[INFO] Dial plan "${existingDialPlan.name}" updated.`);
+                            } else {
+                                errorMessage += `\tDial plan "${existingDialPlan.name}" not updated.\n`;
+                                postMessage(`[ERROR] Dial plan "${existingDialPlan.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tDial plan "${existingDialPlan.name}" not updated.\n`;
-                            postMessage(`[ERROR] Dial plan "${existingDialPlan.name}" not updated.`);
+
+                            // Check if dial plan with same name already exists
+                            let dialPlan = getDialPlanByName(
+                                nccLocation,
+                                nccToken,
+                                existingDialPlan.name
+                            );
+
+                            if (Object.keys(dialPlan).length > 0) {
+                                warningMessage += `\tDial plan with name "${existingDialPlan.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dial plan with name "${existingDialPlan.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create dial plan
+                                let success = upsertDialPlan(
+                                    nccLocation,
+                                    nccToken,
+                                    existingDialPlan
+                                );
+
+                                // Check if dial plan created
+                                if (success) {
+                                    postMessage(`[INFO] Dial plan "${existingDialPlan.name}" created.`);
+                                } else {
+                                    errorMessage += `\tDial plan "${existingDialPlan.name}" not created.\n`;
+                                    postMessage(`[ERROR] Dial plan "${existingDialPlan.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2154,7 +2515,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(disposition).length > 0) {
-                                postMessage(`[WARNING] Disposition with name "${existingDisposition.name}" already exists.`);
+                                warningMessage += `\tDisposition with name "${existingDisposition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Disposition with name "${existingDisposition.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create disposition
@@ -2178,19 +2540,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (dispositions == "update") {
 
-                        // Update disposition
-                        let success = upsertDisposition(
+                        // Get disposition
+                        let disposition = getDispositionById(
                             nccLocation,
                             nccToken,
-                            existingDisposition
+                            existingDisposition._id
                         );
 
-                        // Check if disposition updated
-                        if (success) {
-                            postMessage(`[INFO] Disposition "${existingDisposition.name}" updated.`);
+                        if (Object.keys(disposition).length > 0) {
+
+                            // Update disposition
+                            let success = upsertDisposition(
+                                nccLocation,
+                                nccToken,
+                                existingDisposition
+                            );
+
+                            // Check if disposition updated
+                            if (success) {
+                                postMessage(`[INFO] Disposition "${existingDisposition.name}" updated.`);
+                            } else {
+                                errorMessage += `\tDisposition "${existingDisposition.name}" not updated.\n`;
+                                postMessage(`[ERROR] Disposition "${existingDisposition.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tDisposition "${existingDisposition.name}" not updated.\n`;
-                            postMessage(`[ERROR] Disposition "${existingDisposition.name}" not updated.`);
+
+                            // Check if disposition with same name already exists
+                            let disposition = getDispositionByName(
+                                nccLocation,
+                                nccToken,
+                                existingDisposition.name
+                            );
+
+                            if (Object.keys(disposition).length > 0) {
+                                warningMessage += `\tDisposition with name "${existingDisposition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Disposition with name "${existingDisposition.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create disposition
+                                let success = upsertDisposition(
+                                    nccLocation,
+                                    nccToken,
+                                    existingDisposition
+                                );
+
+                                // Check if disposition created
+                                if (success) {
+                                    postMessage(`[INFO] Disposition "${existingDisposition.name}" created.`);
+                                } else {
+                                    errorMessage += `\tDisposition "${existingDisposition.name}" not created.\n`;
+                                    postMessage(`[ERROR] Disposition "${existingDisposition.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2234,7 +2635,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(entity).length > 0) {
-                                postMessage(`[WARNING] Entity with name "${existingEntity.name}" already exists.`);
+                                warningMessage += `\tEntity with name "${existingEntity.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Entity with name "${existingEntity.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create entity
@@ -2258,19 +2660,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (entities == "update") {
 
-                        // Update entity
-                        let success = upsertEntity(
+                        // Get entity
+                        let entity = getEntityById(
                             nccLocation,
                             nccToken,
-                            existingEntity
+                            existingEntity._id
                         );
 
-                        // Check if entity updated
-                        if (success) {
-                            postMessage(`[INFO] Entity "${existingEntity.name}" updated.`);
+                        if (Object.keys(entity).length > 0) {
+
+                            // Update entity
+                            let success = upsertEntity(
+                                nccLocation,
+                                nccToken,
+                                existingEntity
+                            );
+
+                            // Check if entity updated
+                            if (success) {
+                                postMessage(`[INFO] Entity "${existingEntity.name}" updated.`);
+                            } else {
+                                errorMessage += `\tEntity "${existingEntity.name}" not updated.\n`;
+                                postMessage(`[ERROR] Entity "${existingEntity.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tEntity "${existingEntity.name}" not updated.\n`;
-                            postMessage(`[ERROR] Entity "${existingEntity.name}" not updated.`);
+
+                            // Check if entity with same name already exists
+                            let entity = getEntityByName(
+                                nccLocation,
+                                nccToken,
+                                existingEntity.name
+                            );
+
+                            if (Object.keys(entity).length > 0) {
+                                warningMessage += `\tEntity with name "${existingEntity.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Entity with name "${existingEntity.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create entity
+                                let success = upsertEntity(
+                                    nccLocation,
+                                    nccToken,
+                                    existingEntity
+                                );
+
+                                // Check if entity created
+                                if (success) {
+                                    postMessage(`[INFO] Entity "${existingEntity.name}" created.`);
+                                } else {
+                                    errorMessage += `\tEntity "${existingEntity.name}" not created.\n`;
+                                    postMessage(`[ERROR] Entity "${existingEntity.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2314,7 +2755,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(fieldMapping).length > 0) {
-                                postMessage(`[WARNING] Field mapping with name "${existingFieldMapping.name}" already exists.`);
+                                warningMessage += `\tField mapping with name "${existingFieldMapping.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Field mapping with name "${existingFieldMapping.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create field mapping
@@ -2338,19 +2780,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (fieldMappings == "update") {
 
-                        // Update field mapping
-                        let success = upsertFieldMappings(
+                        // Get field mapping
+                        let fieldMapping = getFieldMappingsById(
                             nccLocation,
                             nccToken,
-                            existingFieldMapping
+                            existingFieldMapping._id
                         );
 
-                        // Check if field mapping updated
-                        if (success) {
-                            postMessage(`[INFO] Field mapping "${existingFieldMapping.name}" updated.`);
+                        if (Object.keys(fieldMapping).length) {
+
+                            // Update field mapping
+                            let success = upsertFieldMappings(
+                                nccLocation,
+                                nccToken,
+                                existingFieldMapping
+                            );
+
+                            // Check if field mapping updated
+                            if (success) {
+                                postMessage(`[INFO] Field mapping "${existingFieldMapping.name}" updated.`);
+                            } else {
+                                errorMessage += `\tField mapping "${existingFieldMapping.name}" not updated.\n`;
+                                postMessage(`[ERROR] Field mapping "${existingFieldMapping.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tField mapping "${existingFieldMapping.name}" not updated.\n`;
-                            postMessage(`[ERROR] Field mapping "${existingFieldMapping.name}" not updated.`);
+
+                            // Check if field mapping with same name already exists
+                            let fieldMapping = getFieldMappingsByName(
+                                nccLocation,
+                                nccToken,
+                                existingFieldMapping.name
+                            );
+
+                            if (Object.keys(fieldMapping).length > 0) {
+                                warningMessage += `\tField mapping with name "${existingFieldMapping.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Field mapping with name "${existingFieldMapping.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create field mapping
+                                let success = upsertFieldMappings(
+                                    nccLocation,
+                                    nccToken,
+                                    existingFieldMapping
+                                );
+
+                                // Check if field mapping created
+                                if (success) {
+                                    postMessage(`[INFO] Field mapping "${existingFieldMapping.name}" created.`);
+                                } else {
+                                    errorMessage += `\tField mapping "${existingFieldMapping.name}" not created.\n`;
+                                    postMessage(`[ERROR] Field mapping "${existingFieldMapping.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2394,7 +2875,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(fileServer).length > 0) {
-                                postMessage(`[WARNING] File server with name "${existingFileServer.name}" already exists.`);
+                                warningMessage += `\tFile server with name "${existingFileServer.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] File server with name "${existingFileServer.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create file server
@@ -2418,19 +2900,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (fileServers == "update") {
 
-                        // Update file server
-                        let success = upsertFileServer(
+                        // Get file server
+                        let fileServer = getFileServerById(
                             nccLocation,
                             nccToken,
-                            existingFileServer
+                            existingFileServer._id
                         );
 
-                        // Check if file server updated
-                        if (success) {
-                            postMessage(`[INFO] File server "${existingFileServer.name}" updated.`);
+                        if (Object.keys(fileServer).length > 0) {
+
+                            // Update file server
+                            let success = upsertFileServer(
+                                nccLocation,
+                                nccToken,
+                                existingFileServer
+                            );
+
+                            // Check if file server updated
+                            if (success) {
+                                postMessage(`[INFO] File server "${existingFileServer.name}" updated.`);
+                            } else {
+                                errorMessage += `\tFile server "${existingFileServer.name}" not updated.\n`;
+                                postMessage(`[ERROR] File server "${existingFileServer.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tFile server "${existingFileServer.name}" not updated.\n`;
-                            postMessage(`[ERROR] File server "${existingFileServer.name}" not updated.`);
+
+                            // Check if file server with same name already exists
+                            let fileServer = getFileServerByName(
+                                nccLocation,
+                                nccToken,
+                                existingFileServer.name
+                            );
+
+                            if (Object.keys(fileServer).length > 0) {
+                                warningMessage += `\tFile server with name "${existingFileServer.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] File server with name "${existingFileServer.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create file server
+                                let success = upsertFileServer(
+                                    nccLocation,
+                                    nccToken,
+                                    existingFileServer
+                                );
+
+                                // Check if file server created
+                                if (success) {
+                                    postMessage(`[INFO] File server "${existingFileServer.name}" created.`);
+                                } else {
+                                    errorMessage += `\tFile server "${existingFileServer.name}" not created.\n`;
+                                    postMessage(`[ERROR] File server "${existingFileServer.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2474,7 +2995,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(filter).length > 0) {
-                                postMessage(`[WARNING] Filter with name "${existingFilter.name}" already exists.`);
+                                warningMessage += `\tFilter with name "${existingFilter.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Filter with name "${existingFilter.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create filter
@@ -2498,19 +3020,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (filters == "update") {
 
-                        // Update filter
-                        let success = upsertFilter(
+                        // Get filter
+                        let filter = getFilterById(
                             nccLocation,
                             nccToken,
-                            existingFilter
+                            existingFilter._id
                         );
 
-                        // Check if filter updated
-                        if (success) {
-                            postMessage(`[INFO] Filter "${existingFilter.name}" updated.`);
+                        if (Object.keys(filter).length > 0) {
+
+                            // Update filter
+                            let success = upsertFilter(
+                                nccLocation,
+                                nccToken,
+                                existingFilter
+                            );
+
+                            // Check if filter updated
+                            if (success) {
+                                postMessage(`[INFO] Filter "${existingFilter.name}" updated.`);
+                            } else {
+                                errorMessage += `\tFilter "${existingFilter.name}" not updated.\n`;
+                                postMessage(`[ERROR] Filter "${existingFilter.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tFilter "${existingFilter.name}" not updated.\n`;
-                            postMessage(`[ERROR] Filter "${existingFilter.name}" not updated.`);
+
+                            // Check if filter with same name already exists
+                            let filter = getFilterByName(
+                                nccLocation,
+                                nccToken,
+                                existingFilter.name
+                            );
+
+                            if (Object.keys(filter).length > 0) {
+                                warningMessage += `\tFilter with name "${existingFilter.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Filter with name "${existingFilter.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create filter
+                                let success = upsertFilter(
+                                    nccLocation,
+                                    nccToken,
+                                    existingFilter
+                                );
+
+                                // Check if filter created
+                                if (success) {
+                                    postMessage(`[INFO] Filter "${existingFilter.name}" created.`);
+                                } else {
+                                    errorMessage += `\tFilter "${existingFilter.name}" not created.\n`;
+                                    postMessage(`[ERROR] Filter "${existingFilter.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2554,7 +3115,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(nccFunction).length > 0) {
-                                postMessage(`[WARNING] Function with name "${existingFunction.name}" already exists.`);
+                                warningMessage += `\tFunction with name "${existingFunction.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Function with name "${existingFunction.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create function
@@ -2578,19 +3140,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (functions == "update") {
 
-                        // Update function
-                        let success = upsertFunction(
+                        // Get function
+                        let nccFunction = getFunctionById(
                             nccLocation,
                             nccToken,
-                            existingFunction
+                            existingFunction._id
                         );
 
-                        // Check if function updated
-                        if (success) {
-                            postMessage(`[INFO] Function "${existingFunction.name}" updated.`);
+                        if (Object.keys(nccFunction).length > 0) {
+
+                            // Update function
+                            let success = upsertFunction(
+                                nccLocation,
+                                nccToken,
+                                existingFunction
+                            );
+
+                            // Check if function updated
+                            if (success) {
+                                postMessage(`[INFO] Function "${existingFunction.name}" updated.`);
+                            } else {
+                                errorMessage += `\tFunction "${existingFunction.name}" not updated.\n`;
+                                postMessage(`[ERROR] Function "${existingFunction.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tFunction "${existingFunction.name}" not updated.\n`;
-                            postMessage(`[ERROR] Function "${existingFunction.name}" not updated.`);
+
+                            // Check if function with same name already exists
+                            let nccFunction = getFunctionByName(
+                                nccLocation,
+                                nccToken,
+                                existingFunction.name
+                            );
+
+                            if (Object.keys(nccFunction).length > 0) {
+                                warningMessage += `\tFunction with name "${existingFunction.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Function with name "${existingFunction.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create function
+                                let success = upsertFunction(
+                                    nccLocation,
+                                    nccToken,
+                                    existingFunction
+                                );
+
+                                // Check if function created
+                                if (success) {
+                                    postMessage(`[INFO] Function "${existingFunction.name}" created.`);
+                                } else {
+                                    errorMessage += `\tFunction "${existingFunction.name}" not created.\n`;
+                                    postMessage(`[ERROR] Function "${existingFunction.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2634,7 +3235,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(homeTab).length > 0) {
-                                postMessage(`[WARNING] Home tab with name "${existingHomeTab.name}" already exists.`);
+                                warningMessage += `\tHome tab with name "${existingHomeTab.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Home tab with name "${existingHomeTab.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create home tab
@@ -2658,19 +3260,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (homeTabs == "update") {
 
-                        // Update home tab
-                        let success = upsertHomeTab(
+                        // Get home tab
+                        let homeTab = getHomeTabById(
                             nccLocation,
                             nccToken,
-                            existingHomeTab
+                            existingHomeTab._id
                         );
 
-                        // Check if home tab updated
-                        if (success) {
-                            postMessage(`[INFO] Home tab "${existingHomeTab.name}" updated.`);
+                        if (Object.keys(homeTab).length > 0) {
+
+                            // Update home tab
+                            let success = upsertHomeTab(
+                                nccLocation,
+                                nccToken,
+                                existingHomeTab
+                            );
+
+                            // Check if home tab updated
+                            if (success) {
+                                postMessage(`[INFO] Home tab "${existingHomeTab.name}" updated.`);
+                            } else {
+                                errorMessage += `\tHome tab "${existingHomeTab.name}" not updated.\n`;
+                                postMessage(`[ERROR] Home tab "${existingHomeTab.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tHome tab "${existingHomeTab.name}" not updated.\n`;
-                            postMessage(`[ERROR] Home tab "${existingHomeTab.name}" not updated.`);
+
+                            // Check if home tab with same name already exists
+                            let homeTab = getHomeTabByName(
+                                nccLocation,
+                                nccToken,
+                                existingHomeTab.name
+                            );
+
+                            if (Object.keys(homeTab).length > 0) {
+                                warningMessage += `\tHome tab with name "${existingHomeTab.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Home tab with name "${existingHomeTab.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create home tab
+                                let success = upsertHomeTab(
+                                    nccLocation,
+                                    nccToken,
+                                    existingHomeTab
+                                );
+
+                                // Check if home tab created
+                                if (success) {
+                                    postMessage(`[INFO] Home tab "${existingHomeTab.name}" created.`);
+                                } else {
+                                    errorMessage += `\tHome tab "${existingHomeTab.name}" not created.\n`;
+                                    postMessage(`[ERROR] Home tab "${existingHomeTab.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2714,7 +3355,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(music).length > 0) {
-                                postMessage(`[WARNING] Music with name "${existingMusic.name}" already exists.`);
+                                warningMessage += `\tMusic with name "${existingMusic.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Music with name "${existingMusic.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create music
@@ -2738,19 +3380,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (music == "update") {
 
-                        // Update music
-                        let success = upsertMusic(
+                        // Get music
+                        let music = getMusicById(
                             nccLocation,
                             nccToken,
-                            existingMusic
+                            existingMusic._id
                         );
 
-                        // Check if music updated
-                        if (success) {
-                            postMessage(`[INFO] Music "${existingMusic.name}" updated.`);
+                        if (Object.keys(music).length > 0) {
+
+                            // Update music
+                            let success = upsertMusic(
+                                nccLocation,
+                                nccToken,
+                                existingMusic
+                            );
+
+                            // Check if music updated
+                            if (success) {
+                                postMessage(`[INFO] Music "${existingMusic.name}" updated.`);
+                            } else {
+                                errorMessage += `\tMusic "${existingMusic.name}" not updated.\n`;
+                                postMessage(`[ERROR] Music "${existingMusic.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tMusic "${existingMusic.name}" not updated.\n`;
-                            postMessage(`[ERROR] Music "${existingMusic.name}" not updated.`);
+
+                            // Check if music with same name already exists
+                            let music = getMusicByName(
+                                nccLocation,
+                                nccToken,
+                                existingMusic.name
+                            );
+
+                            if (Object.keys(music).length > 0) {
+                                warningMessage += `\tMusic with name "${existingMusic.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Music with name "${existingMusic.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create music
+                                let success = upsertMusic(
+                                    nccLocation,
+                                    nccToken,
+                                    existingMusic
+                                );
+
+                                // Check if music created
+                                if (success) {
+                                    postMessage(`[INFO] Music "${existingMusic.name}" created.`);
+                                } else {
+                                    errorMessage += `\tMusic "${existingMusic.name}" not created.\n`;
+                                    postMessage(`[ERROR] Music "${existingMusic.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2794,7 +3475,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(partition).length > 0) {
-                                postMessage(`[WARNING] Partition with name "${existingPartition.name}" already exists.`);
+                                warningMessage += `\tPartition with name "${existingPartition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Partition with name "${existingPartition.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create partition
@@ -2818,19 +3500,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (partitions == "update") {
 
-                        // Update partition
-                        let success = upsertPartition(
+                        // Get partition
+                        let partition = getPartitionById(
                             nccLocation,
                             nccToken,
-                            existingPartition
+                            existingPartition._id
                         );
 
-                        // Check if partition updated
-                        if (success) {
-                            postMessage(`[INFO] Partition "${existingPartition.name}" updated.`);
+                        if (Object.keys(partition).length > 0) {
+
+                            // Update partition
+                            let success = upsertPartition(
+                                nccLocation,
+                                nccToken,
+                                existingPartition
+                            );
+
+                            // Check if partition updated
+                            if (success) {
+                                postMessage(`[INFO] Partition "${existingPartition.name}" updated.`);
+                            } else {
+                                errorMessage += `\tPartition "${existingPartition.name}" not updated.\n`;
+                                postMessage(`[ERROR] Partition "${existingPartition.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tPartition "${existingPartition.name}" not updated.\n`;
-                            postMessage(`[ERROR] Partition "${existingPartition.name}" not updated.`);
+
+                            // Check if partition with same name already exists
+                            let partition = getPartitionByName(
+                                nccLocation,
+                                nccToken,
+                                existingPartition.name
+                            );
+
+                            if (Object.keys(partition).length > 0) {
+                                warningMessage += `\tPartition with name "${existingPartition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Partition with name "${existingPartition.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create partition
+                                let success = upsertPartition(
+                                    nccLocation,
+                                    nccToken,
+                                    existingPartition
+                                );
+
+                                // Check if partition created
+                                if (success) {
+                                    postMessage(`[INFO] Partition "${existingPartition.name}" created.`);
+                                } else {
+                                    errorMessage += `\tPartition "${existingPartition.name}" not created.\n`;
+                                    postMessage(`[ERROR] Partition "${existingPartition.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2874,7 +3595,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(prompt).length > 0) {
-                                postMessage(`[WARNING] Prompt with name "${existingPrompt.name}" already exists.`);
+                                warningMessage += `\tPrompt with name "${existingPrompt.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Prompt with name "${existingPrompt.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create prompt
@@ -2898,19 +3620,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (prompts == "update") {
 
-                        // Update prompt
-                        let success = upsertPrompt(
+                        // Get prompt
+                        let prompt = getPromptById(
                             nccLocation,
                             nccToken,
-                            existingPrompt
+                            existingPrompt._id
                         );
 
-                        // Check if prompt updated
-                        if (success) {
-                            postMessage(`[INFO] Prompt "${existingPrompt.name}" updated.`);
+                        if (Object.keys(prompt).length > 0) {
+
+                            // Update prompt
+                            let success = upsertPrompt(
+                                nccLocation,
+                                nccToken,
+                                existingPrompt
+                            );
+
+                            // Check if prompt updated
+                            if (success) {
+                                postMessage(`[INFO] Prompt "${existingPrompt.name}" updated.`);
+                            } else {
+                                errorMessage += `\tPrompt "${existingPrompt.name}" not updated.\n`;
+                                postMessage(`[ERROR] Prompt "${existingPrompt.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tPrompt "${existingPrompt.name}" not updated.\n`;
-                            postMessage(`[ERROR] Prompt "${existingPrompt.name}" not updated.`);
+
+                            // Check if prompt with same name already exists
+                            let prompt = getPromptByName(
+                                nccLocation,
+                                nccToken,
+                                existingPrompt.name
+                            );
+
+                            if (Object.keys(prompt).length > 0) {
+                                warningMessage += `\tPrompt with name "${existingPrompt.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Prompt with name "${existingPrompt.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create prompt
+                                let success = upsertPrompt(
+                                    nccLocation,
+                                    nccToken,
+                                    existingPrompt
+                                );
+
+                                // Check if prompt created
+                                if (success) {
+                                    postMessage(`[INFO] Prompt "${existingPrompt.name}" created.`);
+                                } else {
+                                    errorMessage += `\tPrompt "${existingPrompt.name}" not created.\n`;
+                                    postMessage(`[ERROR] Prompt "${existingPrompt.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -2954,7 +3715,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(queue).length > 0) {
-                                postMessage(`[WARNING] Queue with name "${existingQueue.name}" already exists.`);
+                                warningMessage += `\tQueue with name "${existingQueue.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Queue with name "${existingQueue.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create queue
@@ -2978,19 +3740,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (queues == "update") {
 
-                        // Update queue
-                        let success = upsertQueue(
+                        // Get queue
+                        let queue = getQueueById(
                             nccLocation,
                             nccToken,
-                            existingQueue
+                            existingQueue._id
                         );
 
-                        // Check if queue updated
-                        if (success) {
-                            postMessage(`[INFO] Queue "${existingQueue.name}" updated.`);
+                        if (Object.keys(queue).length > 0) {
+
+                            // Update queue
+                            let success = upsertQueue(
+                                nccLocation,
+                                nccToken,
+                                existingQueue
+                            );
+
+                            // Check if queue updated
+                            if (success) {
+                                postMessage(`[INFO] Queue "${existingQueue.name}" updated.`);
+                            } else {
+                                errorMessage += `\tQueue "${existingQueue.name}" not updated.\n`;
+                                postMessage(`[ERROR] Queue "${existingQueue.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tQueue "${existingQueue.name}" not updated.\n`;
-                            postMessage(`[ERROR] Queue "${existingQueue.name}" not updated.`);
+
+                            // Check if queue with same name already exists
+                            let queue = getQueueByName(
+                                nccLocation,
+                                nccToken,
+                                existingQueue.name
+                            );
+
+                            if (Object.keys(queue).length > 0) {
+                                warningMessage += `\tQueue with name ${existingQueue.name} exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Queue with name ${existingQueue.name} exists, but with different ID.`);
+                            } else {
+
+                                // Create queue
+                                let success = upsertQueue(
+                                    nccLocation,
+                                    nccToken,
+                                    existingQueue
+                                );
+
+                                // Check if queue created
+                                if (success) {
+                                    postMessage(`[INFO] Queue "${existingQueue.name}" created.`);
+                                } else {
+                                    errorMessage += `\tQueue "${existingQueue.name}" not created.\n`;
+                                    postMessage(`[ERROR] Queue "${existingQueue.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3034,7 +3835,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(report).length > 0) {
-                                postMessage(`[WARNING] Report with name "${existingReport.name}" already exists.`);
+                                warningMessage += `\tReport with name "${existingReport.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Report with name "${existingReport.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create report
@@ -3058,19 +3860,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (reports == "update") {
 
-                        // Update report
-                        let success = upsertReport(
+                        // Get report
+                        let report = getReportById(
                             nccLocation,
                             nccToken,
-                            existingReport
+                            existingReport._id
                         );
 
-                        // Check if report updated
-                        if (success) {
-                            postMessage(`[INFO] Report "${existingReport.name}" updated.`);
+                        if (Object.keys(report).length > 0) {
+
+                            // Update report
+                            let success = upsertReport(
+                                nccLocation,
+                                nccToken,
+                                existingReport
+                            );
+
+                            // Check if report updated
+                            if (success) {
+                                postMessage(`[INFO] Report "${existingReport.name}" updated.`);
+                            } else {
+                                errorMessage += `\tReport "${existingReport.name}" not updated.\n`;
+                                postMessage(`[ERROR] Report "${existingReport.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tReport "${existingReport.name}" not updated.\n`;
-                            postMessage(`[ERROR] Report "${existingReport.name}" not updated.`);
+
+                            // Check if report with same name already exists
+                            let report = getReportByName(
+                                nccLocation,
+                                nccToken,
+                                existingReport.name
+                            );
+
+                            if (Object.keys(report).length > 0) {
+                                warningMessage += `\tReport with name "${existingReport.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Report with name "${existingReport.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create report
+                                let success = upsertReport(
+                                    nccLocation,
+                                    nccToken,
+                                    existingReport
+                                );
+
+                                // Check if report created
+                                if (success) {
+                                    postMessage(`[INFO] Report "${existingReport.name}" created.`);
+                                } else {
+                                    errorMessage += `\tReport "${existingReport.name}" not created.\n`;
+                                    postMessage(`[ERROR] Report "${existingReport.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3114,7 +3955,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(restCall).length > 0) {
-                                postMessage(`[WARNING] REST call with name "${existingRestCall.name}" already exists.`);
+                                warningMessage += `\tREST call with name "${existingRestCall.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] REST call with name "${existingRestCall.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create REST call
@@ -3138,19 +3980,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (restCalls == "update") {
 
-                        // Update REST call
-                        let success = upsertRestCall(
+                        // Get REST call
+                        let restCall = getRestCallById(
                             nccLocation,
                             nccToken,
-                            existingRestCall
+                            existingRestCall._id
                         );
 
-                        // Check if REST call updated
-                        if (success) {
-                            postMessage(`[INFO] REST call "${existingRestCall.name}" updated.`);
+                        if (Object.keys(restCall).length > 0) {
+
+                            // Update REST call
+                            let success = upsertRestCall(
+                                nccLocation,
+                                nccToken,
+                                existingRestCall
+                            );
+
+                            // Check if REST call updated
+                            if (success) {
+                                postMessage(`[INFO] REST call "${existingRestCall.name}" updated.`);
+                            } else {
+                                errorMessage += `\tREST call "${existingRestCall.name}" not updated.\n`;
+                                postMessage(`[ERROR] REST call "${existingRestCall.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tREST call "${existingRestCall.name}" not updated.\n`;
-                            postMessage(`[ERROR] REST call "${existingRestCall.name}" not updated.`);
+
+                            // Check if REST call with same name already exists
+                            let restCall = getRestCallByName(
+                                nccLocation,
+                                nccToken,
+                                existingRestCall.name
+                            );
+
+                            if (Object.keys(restCall).length > 0) {
+                                warningMessage += `\tREST call with name "${existingRestCall.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] REST call with name "${existingRestCall.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create REST call
+                                let success = upsertRestCall(
+                                    nccLocation,
+                                    nccToken,
+                                    existingRestCall
+                                );
+
+                                // Check if REST call created
+                                if (success) {
+                                    postMessage(`[INFO] REST call "${existingRestCall.name}" created.`);
+                                } else {
+                                    errorMessage += `\tREST call "${existingRestCall.name}" not created.\n`;
+                                    postMessage(`[ERROR] REST call "${existingRestCall.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3194,7 +4075,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(scorecard).length > 0) {
-                                postMessage(`[WARNING] Scorecard with name "${existingScorecard.name}" already exists.`);
+                                warningMessage += `\tScorecard with name "${existingScorecard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Scorecard with name "${existingScorecard.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create scorecard
@@ -3218,19 +4100,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (scorecards == "update") {
 
-                        // Update scorecard
-                        let success = upsertScorecard(
+                        // Get scorecard
+                        let scorecard = getScorecardById(
                             nccLocation,
                             nccToken,
-                            existingScorecard
+                            existingScorecard._id
                         );
 
-                        // Check if scorecard updated
-                        if (success) {
-                            postMessage(`[INFO] Scorecard "${existingScorecard.name}" updated.`);
+                        if (Object.keys(scorecard).length > 0) {
+
+                            // Update scorecard
+                            let success = upsertScorecard(
+                                nccLocation,
+                                nccToken,
+                                existingScorecard
+                            );
+
+                            // Check if scorecard updated
+                            if (success) {
+                                postMessage(`[INFO] Scorecard "${existingScorecard.name}" updated.`);
+                            } else {
+                                errorMessage += `\tScorecard "${existingScorecard.name}" not updated.\n`;
+                                postMessage(`[ERROR] Scorecard "${existingScorecard.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tScorecard "${existingScorecard.name}" not updated.\n`;
-                            postMessage(`[ERROR] Scorecard "${existingScorecard.name}" not updated.`);
+
+                            // Check if scorecard with same name already exists
+                            let scorecard = getScorecardByName(
+                                nccLocation,
+                                nccToken,
+                                existingScorecard.name
+                            );
+
+                            if (Object.keys(scorecard).length > 0) {
+                                warningMessage += `\tScorecard with name "${existingScorecard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Scorecard with name "${existingScorecard.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create scorecard
+                                let success = upsertScorecard(
+                                    nccLocation,
+                                    nccToken,
+                                    existingScorecard
+                                );
+
+                                // Check if scorecard created
+                                if (success) {
+                                    postMessage(`[INFO] Scorecard "${existingScorecard.name}" created.`);
+                                } else {
+                                    errorMessage += `\tScorecard "${existingScorecard.name}" not created.\n`;
+                                    postMessage(`[ERROR] Scorecard "${existingScorecard.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3274,7 +4195,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(script).length > 0) {
-                                postMessage(`[WARNING] Script with name "${existingScript.name}" already exists.`);
+                                warningMessage += `\tScript with name "${existingScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Script with name "${existingScript.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create script
@@ -3298,19 +4220,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (scripts == "update") {
 
-                        // Update script
-                        let success = upsertScript(
+                        // Get script
+                        let script = getScriptById(
                             nccLocation,
                             nccToken,
-                            existingScript
+                            existingScript._id
                         );
 
-                        // Check if script updated
-                        if (success) {
-                            postMessage(`[INFO] Script "${existingScript.name}" updated.`);
+                        if (Object.keys(script).length > 0) {
+
+                            // Update script
+                            let success = upsertScript(
+                                nccLocation,
+                                nccToken,
+                                existingScript
+                            );
+
+                            // Check if script updated
+                            if (success) {
+                                postMessage(`[INFO] Script "${existingScript.name}" updated.`);
+                            } else {
+                                errorMessage += `\tScript "${existingScript.name}" not updated.\n`;
+                                postMessage(`[ERROR] Script "${existingScript.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tScript "${existingScript.name}" not updated.\n`;
-                            postMessage(`[ERROR] Script "${existingScript.name}" not updated.`);
+
+                            // Check if script with same name already exists
+                            let script = getScriptByName(
+                                nccLocation,
+                                nccToken,
+                                existingScript.name
+                            );
+
+                            if (Object.keys(script).length > 0) {
+                                warningMessage += `\tScript with name "${existingScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Script with name "${existingScript.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create script
+                                let success = upsertScript(
+                                    nccLocation,
+                                    nccToken,
+                                    existingScript
+                                );
+
+                                // Check if script created
+                                if (success) {
+                                    postMessage(`[INFO] Script "${existingScript.name}" created.`);
+                                } else {
+                                    errorMessage += `\tScript "${existingScript.name}" not created.\n`;
+                                    postMessage(`[ERROR] Script "${existingScript.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3354,7 +4315,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(skill).length > 0) {
-                                postMessage(`[WARNING] Skill with name "${existingSkill.name}" already exists.`);
+                                warningMessage += `\tSkill with name "${existingSkill.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Skill with name "${existingSkill.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create skill
@@ -3378,19 +4340,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (skills == "update") {
 
-                        // Update skill
-                        let success = upsertSkill(
+                        // Get skill
+                        let skill = getSkillById(
                             nccLocation,
                             nccToken,
-                            existingSkill
+                            existingSkill._id
                         );
 
-                        // Check if skill updated
-                        if (success) {
-                            postMessage(`[INFO] Skill "${existingSkill.name}" updated.`);
+                        if (Object.keys(skill).length > 0) {
+
+                            // Update skill
+                            let success = upsertSkill(
+                                nccLocation,
+                                nccToken,
+                                existingSkill
+                            );
+
+                            // Check if skill updated
+                            if (success) {
+                                postMessage(`[INFO] Skill "${existingSkill.name}" updated.`);
+                            } else {
+                                errorMessage += `\tSkill "${existingSkill.name}" not updated.\n`;
+                                postMessage(`[ERROR] Skill "${existingSkill.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tSkill "${existingSkill.name}" not updated.\n`;
-                            postMessage(`[ERROR] Skill "${existingSkill.name}" not updated.`);
+
+                            // Check if skill with same name already exists
+                            let skill = getSkillByName(
+                                nccLocation,
+                                nccToken,
+                                existingSkill.name
+                            );
+
+                            if (Object.keys(skill).length > 0) {
+                                warningMessage += `\tSkill with name "${existingSkill.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Skill with name "${existingSkill.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create skill
+                                let success = upsertSkill(
+                                    nccLocation,
+                                    nccToken,
+                                    existingSkill
+                                );
+
+                                // Check if skill created
+                                if (success) {
+                                    postMessage(`[INFO] Skill "${existingSkill.name}" created.`);
+                                } else {
+                                    errorMessage += `\tSkill "${existingSkill.name}" not created.\n`;
+                                    postMessage(`[ERROR] Skill "${existingSkill.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3434,7 +4435,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(stateDid).length > 0) {
-                                postMessage(`[WARNING] State DID with name "${existingStateDid.name}" already exists.`);
+                                warningMessage += `\tState DID with name "${existingStateDid.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] State DID with name "${existingStateDid.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create state DID
@@ -3458,19 +4460,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (stateDids == "update") {
 
-                        // Update state DID
-                        let success = upsertStateDid(
+                        // Get state DID
+                        let stateDid = getStateDidById(
                             nccLocation,
                             nccToken,
-                            existingStateDid
+                            existingStateDid._id
                         );
 
-                        // Check if state DID updated
-                        if (success) {
-                            postMessage(`[INFO] State DID "${existingStateDid.name}" updated.`);
+                        if (Object.keys(stateDid).length > 0) {
+
+                            // Update state DID
+                            let success = upsertStateDid(
+                                nccLocation,
+                                nccToken,
+                                existingStateDid
+                            );
+
+                            // Check if state DID updated
+                            if (success) {
+                                postMessage(`[INFO] State DID "${existingStateDid.name}" updated.`);
+                            } else {
+                                errorMessage += `\tState DID "${existingStateDid.name}" not updated.\n`;
+                                postMessage(`[ERROR] State DID "${existingStateDid.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tState DID "${existingStateDid.name}" not updated.\n`;
-                            postMessage(`[ERROR] State DID "${existingStateDid.name}" not updated.`);
+
+                            // Check if state DID with same name already exists
+                            let stateDid = getStateDidByName(
+                                nccLocation,
+                                nccToken,
+                                existingStateDid.name
+                            );
+
+                            if (Object.keys(stateDid).length > 0) {
+                                warningMessage += `\tState DID with name "${existingStateDid.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] State DID with name "${existingStateDid.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create state DID
+                                let success = upsertStateDid(
+                                    nccLocation,
+                                    nccToken,
+                                    existingStateDid
+                                );
+
+                                // Check if state DID created
+                                if (success) {
+                                    postMessage(`[INFO] State DID "${existingStateDid.name}" created.`);
+                                } else {
+                                    errorMessage += `\tState DID "${existingStateDid.name}" not created.\n`;
+                                    postMessage(`[ERROR] State DID "${existingStateDid.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3514,7 +4555,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(surveyTheme).length > 0) {
-                                postMessage(`[WARNING] Survey theme with name "${existingSurveyTheme.name}" already exists.`);
+                                warningMessage += `\tSurvey theme with name "${existingSurveyTheme.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey theme with name "${existingSurveyTheme.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create survey theme
@@ -3538,19 +4580,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (surveyThemes == "update") {
 
-                        // Update survey theme
-                        let success = upsertSurveyTheme(
+                        // Get survey theme
+                        let surveyTheme = getSurveyThemeById(
                             nccLocation,
                             nccToken,
-                            existingSurveyTheme
+                            existingSurveyTheme._id
                         );
 
-                        // Check if survey theme updated
-                        if (success) {
-                            postMessage(`[INFO] Survey theme "${existingSurveyTheme.name}" updated.`);
+                        if (Object.keys(surveyTheme).length > 0) {
+
+                            // Update survey theme
+                            let success = upsertSurveyTheme(
+                                nccLocation,
+                                nccToken,
+                                existingSurveyTheme
+                            );
+
+                            // Check if survey theme updated
+                            if (success) {
+                                postMessage(`[INFO] Survey theme "${existingSurveyTheme.name}" updated.`);
+                            } else {
+                                errorMessage += `\tSurvey theme "${existingSurveyTheme.name}" not updated.\n`;
+                                postMessage(`[ERROR] Survey theme "${existingSurveyTheme.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tSurvey theme "${existingSurveyTheme.name}" not updated.\n`;
-                            postMessage(`[ERROR] Survey theme "${existingSurveyTheme.name}" not updated.`);
+
+                            // Check if survey theme with same name already exists
+                            let surveyTheme = getSurveyThemeByName(
+                                nccLocation,
+                                nccToken,
+                                existingSurveyTheme.name
+                            );
+
+                            if (Object.keys(surveyTheme).length > 0) {
+                                warningMessage += `\tSurvey theme with name "${existingSurveyTheme.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey theme with name "${existingSurveyTheme.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create survey theme
+                                let success = upsertSurveyTheme(
+                                    nccLocation,
+                                    nccToken,
+                                    existingSurveyTheme
+                                );
+
+                                // Check if survey theme created
+                                if (success) {
+                                    postMessage(`[INFO] Survey theme "${existingSurveyTheme.name}" created.`);
+                                } else {
+                                    errorMessage += `\tSurvey theme "${existingSurveyTheme.name}" not created.\n`;
+                                    postMessage(`[ERROR] Survey theme "${existingSurveyTheme.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3594,7 +4675,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(survey).length > 0) {
-                                postMessage(`[WARNING] Survey with name "${existingSurvey.name}" already exists.`);
+                                warningMessage += `\tSurvey with name "${existingSurvey.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey with name "${existingSurvey.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create survey
@@ -3618,19 +4700,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (surveys == "update") {
 
-                        // Update survey
-                        let success = upsertSurvey(
+                        // Get survey
+                        let survey = getSurveyById(
                             nccLocation,
                             nccToken,
-                            existingSurvey
+                            existingSurvey._id
                         );
 
-                        // Check if survey updated
-                        if (success) {
-                            postMessage(`[INFO] Survey "${existingSurvey.name}" updated.`);
+                        if (Object.keys(survey).length > 0) {
+
+                            // Update survey
+                            let success = upsertSurvey(
+                                nccLocation,
+                                nccToken,
+                                existingSurvey
+                            );
+
+                            // Check if survey updated
+                            if (success) {
+                                postMessage(`[INFO] Survey "${existingSurvey.name}" updated.`);
+                            } else {
+                                errorMessage += `\tSurvey "${existingSurvey.name}" not updated.\n`;
+                                postMessage(`[ERROR] Survey "${existingSurvey.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tSurvey "${existingSurvey.name}" not updated.\n`;
-                            postMessage(`[ERROR] Survey "${existingSurvey.name}" not updated.`);
+
+                            // Check if survey with same name already exists
+                            let survey = getSurveyByName(
+                                nccLocation,
+                                nccToken,
+                                existingSurvey.name
+                            );
+
+                            if (Object.keys(survey).length > 0) {
+                                warningMessage += `\tSurvey with name "${existingSurvey.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey with name "${existingSurvey.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create survey
+                                let success = upsertSurvey(
+                                    nccLocation,
+                                    nccToken,
+                                    existingSurvey
+                                );
+
+                                // Check if survey created
+                                if (success) {
+                                    postMessage(`[INFO] Survey "${existingSurvey.name}" created.`);
+                                } else {
+                                    errorMessage += `\tSurvey "${existingSurvey.name}" not created.\n`;
+                                    postMessage(`[ERROR] Survey "${existingSurvey.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3674,7 +4795,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(template).length > 0) {
-                                postMessage(`[WARNING] Template with name "${existingTemplate.name}" already exists.`);
+                                warningMessage += `\tTemplate with name "${existingTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Template with name "${existingTemplate.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create template
@@ -3698,19 +4820,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (templates == "update") {
 
-                        // Update template
-                        let success = upsertTemplate(
+                        // Get template
+                        let template = getTemplateById(
                             nccLocation,
                             nccToken,
-                            existingTemplate
+                            existingTemplate._id
                         );
 
-                        // Check if template updated
-                        if (success) {
-                            postMessage(`[INFO] Template "${existingTemplate.name}" updated.`);
+                        if (Object.keys(template).length > 0) {
+
+                            // Update template
+                            let success = upsertTemplate(
+                                nccLocation,
+                                nccToken,
+                                existingTemplate
+                            );
+
+                            // Check if template updated
+                            if (success) {
+                                postMessage(`[INFO] Template "${existingTemplate.name}" updated.`);
+                            } else {
+                                errorMessage += `\tTemplate "${existingTemplate.name}" not updated.\n`;
+                                postMessage(`[ERROR] Template "${existingTemplate.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tTemplate "${existingTemplate.name}" not updated.\n`;
-                            postMessage(`[ERROR] Template "${existingTemplate.name}" not updated.`);
+
+                            // Check if template with same name already exists
+                            let template = getTemplateByName(
+                                nccLocation,
+                                nccToken,
+                                existingTemplate.name
+                            );
+
+                            if (Object.keys(template).length > 0) {
+                                warningMessage += `\tTemplate with name "${existingTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Template with name "${existingTemplate.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create template
+                                let success = upsertTemplate(
+                                    nccLocation,
+                                    nccToken,
+                                    existingTemplate
+                                );
+
+                                // Check if template created
+                                if (success) {
+                                    postMessage(`[INFO] Template "${existingTemplate.name}" created.`);
+                                } else {
+                                    errorMessage += `\tTemplate "${existingTemplate.name}" not created.\n`;
+                                    postMessage(`[ERROR] Template "${existingTemplate.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3754,7 +4915,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(timeEvent).length > 0) {
-                                postMessage(`[WARNING] Time event with name "${existingTimeEvent.name}" already exists.`);
+                                warningMessage += `\tTime event with name "${existingTimeEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Time event with name "${existingTimeEvent.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create time event
@@ -3778,19 +4940,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (timeEvents == "update") {
 
-                        // Update time event
-                        let success = upsertTimeEvent(
+                        // Get time event
+                        let timeEvent = getTimeEventById(
                             nccLocation,
                             nccToken,
-                            existingTimeEvent
+                            existingTimeEvent._id
                         );
 
-                        // Check if time event updated
-                        if (success) {
-                            postMessage(`[INFO] Time event "${existingTimeEvent.name}" updated.`);
+                        if (Object.keys(timeEvent).length > 0) {
+
+                            // Update time event
+                            let success = upsertTimeEvent(
+                                nccLocation,
+                                nccToken,
+                                existingTimeEvent
+                            );
+
+                            // Check if time event updated
+                            if (success) {
+                                postMessage(`[INFO] Time event "${existingTimeEvent.name}" updated.`);
+                            } else {
+                                errorMessage += `\tTime event "${existingTimeEvent.name}" not updated.\n`;
+                                postMessage(`[ERROR] Time event "${existingTimeEvent.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tTime event "${existingTimeEvent.name}" not updated.\n`;
-                            postMessage(`[ERROR] Time event "${existingTimeEvent.name}" not updated.`);
+
+                            // Check if time event with same name already exists
+                            let timeEvent = getTimeEventByName(
+                                nccLocation,
+                                nccToken,
+                                existingTimeEvent.name
+                            );
+
+                            if (Object.keys(timeEvent).length > 0) {
+                                warningMessage += `\tTime event with name "${existingTimeEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Time event with name "${existingTimeEvent.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create time event
+                                let success = upsertTimeEvent(
+                                    nccLocation,
+                                    nccToken,
+                                    existingTimeEvent
+                                );
+
+                                // Check if time event created
+                                if (success) {
+                                    postMessage(`[INFO] Time event "${existingTimeEvent.name}" created.`);
+                                } else {
+                                    errorMessage += `\tTime event "${existingTimeEvent.name}" not created.\n`;
+                                    postMessage(`[ERROR] Time event "${existingTimeEvent.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3834,7 +5035,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(userProfile).length > 0) {
-                                postMessage(`[WARNING] User profile with name "${existingUserProfile.name}" already exists.`);
+                                warningMessage += `\tUser profile with name "${existingUserProfile.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] User profile with name "${existingUserProfile.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create user profile
@@ -3858,19 +5060,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (userProfiles == "update") {
 
-                        // Update user profile
-                        let success = upsertUserProfile(
+                        // Get user profile
+                        let userProfile = getUserProfileById(
                             nccLocation,
                             nccToken,
-                            existingUserProfile
+                            existingUserProfile._id
                         );
 
-                        // Check if user profile updated
-                        if (success) {
-                            postMessage(`[INFO] User profile "${existingUserProfile.name}" updated.`);
+                        if (Object.keys(userProfile).length > 0) {
+
+                            // Update user profile
+                            let success = upsertUserProfile(
+                                nccLocation,
+                                nccToken,
+                                existingUserProfile
+                            );
+
+                            // Check if user profile updated
+                            if (success) {
+                                postMessage(`[INFO] User profile "${existingUserProfile.name}" updated.`);
+                            } else {
+                                errorMessage += `\tUser profile "${existingUserProfile.name}" not updated.\n`;
+                                postMessage(`[ERROR] User profile "${existingUserProfile.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tUser profile "${existingUserProfile.name}" not updated.\n`;
-                            postMessage(`[ERROR] User profile "${existingUserProfile.name}" not updated.`);
+
+                            // Check if user profile with same name already exists
+                            let userProfile = getUserProfileByName(
+                                nccLocation,
+                                nccToken,
+                                existingUserProfile.name
+                            );
+
+                            if (Object.keys(userProfile).length > 0) {
+                                warningMessage += `\tUser profile with name "${existingUserProfile.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] User profile with name "${existingUserProfile.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create user profile
+                                let success = upsertUserProfile(
+                                    nccLocation,
+                                    nccToken,
+                                    existingUserProfile
+                                );
+
+                                // Check if user profile created
+                                if (success) {
+                                    postMessage(`[INFO] User profile "${existingUserProfile.name}" created.`);
+                                } else {
+                                    errorMessage += `\tUser profile "${existingUserProfile.name}" not created.\n`;
+                                    postMessage(`[ERROR] User profile "${existingUserProfile.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3914,7 +5155,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(whatsAppTemplate).length > 0) {
-                                postMessage(`[WARNING] WhatsApp template with name "${existingWhatsAppTemplate.name}" already exists.`);
+                                warningMessage += `\tWhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] WhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create WhatsApp template
@@ -3938,19 +5180,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (whatsAppTemplates == "update") {
 
-                        // Update WhatsApp template
-                        let success = upsertWhatsAppTemplate(
+                        // Get WhatsApp template
+                        let whatsAppTemplate = getWhatsAppTemplateById(
                             nccLocation,
                             nccToken,
-                            existingWhatsAppTemplate
+                            existingWhatsAppTemplate._id
                         );
 
-                        // Check if WhatsApp template updated
-                        if (success) {
-                            postMessage(`[INFO] WhatsApp template "${existingWhatsAppTemplate.name}" updated.`);
+                        if (Object.keys(whatsAppTemplate).length > 0) {
+
+                            // Update WhatsApp template
+                            let success = upsertWhatsAppTemplate(
+                                nccLocation,
+                                nccToken,
+                                existingWhatsAppTemplate
+                            );
+
+                            // Check if WhatsApp template updated
+                            if (success) {
+                                postMessage(`[INFO] WhatsApp template "${existingWhatsAppTemplate.name}" updated.`);
+                            } else {
+                                errorMessage += `\tWhatsApp template "${existingWhatsAppTemplate.name}" not updated.\n`;
+                                postMessage(`[ERROR] WhatsApp template "${existingWhatsAppTemplate.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tWhatsApp template "${existingWhatsAppTemplate.name}" not updated.\n`;
-                            postMessage(`[ERROR] WhatsApp template "${existingWhatsAppTemplate.name}" not updated.`);
+
+                            // Check if WhatsApp template with same name already exists
+                            let whatsAppTemplate = getWhatsAppTemplateByName(
+                                nccLocation,
+                                nccToken,
+                                existingWhatsAppTemplate.name
+                            );
+
+                            if (Object.keys(whatsAppTemplate).length > 0) {
+                                warningMessage += `\tWhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] WhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create WhatsApp template
+                                let success = upsertWhatsAppTemplate(
+                                    nccLocation,
+                                    nccToken,
+                                    existingWhatsAppTemplate
+                                );
+
+                                // Check if WhatsApp template created
+                                if (success) {
+                                    postMessage(`[INFO] WhatsApp template "${existingWhatsAppTemplate.name}" created.`);
+                                } else {
+                                    errorMessage += `\tWhatsApp template "${existingWhatsAppTemplate.name}" not created.\n`;
+                                    postMessage(`[ERROR] WhatsApp template "${existingWhatsAppTemplate.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -3994,7 +5275,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(widget).length > 0) {
-                                postMessage(`[WARNING] Widget with name "${existingWidget.name}" already exists.`);
+                                warningMessage += `\tWidget with name "${existingWidget.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Widget with name "${existingWidget.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create widget
@@ -4018,19 +5300,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (widgets == "update") {
 
-                        // Update widget
-                        let success = upsertWidget(
+                        // Get widget
+                        let widget = getWidgetById(
                             nccLocation,
                             nccToken,
-                            existingWidget
+                            existingWidget._id
                         );
 
-                        // Check if widget updated
-                        if (success) {
-                            postMessage(`[INFO] Widget "${existingWidget.name}" updated.`);
+                        if (Object.keys(widget).length > 0) {
+
+                            // Update widget
+                            let success = upsertWidget(
+                                nccLocation,
+                                nccToken,
+                                existingWidget
+                            );
+
+                            // Check if widget updated
+                            if (success) {
+                                postMessage(`[INFO] Widget "${existingWidget.name}" updated.`);
+                            } else {
+                                errorMessage += `\tWidget "${existingWidget.name}" not updated.\n`;
+                                postMessage(`[ERROR] Widget "${existingWidget.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tWidget "${existingWidget.name}" not updated.\n`;
-                            postMessage(`[ERROR] Widget "${existingWidget.name}" not updated.`);
+
+                            // Check if widget with same name already exists
+                            let widget = getWidgetByName(
+                                nccLocation,
+                                nccToken,
+                                existingWidget.name
+                            );
+
+                            if (Object.keys(widget).length > 0) {
+                                warningMessage += `\tWidget with name "${existingWidget.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Widget with name "${existingWidget.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create widget
+                                let success = upsertWidget(
+                                    nccLocation,
+                                    nccToken,
+                                    existingWidget
+                                );
+
+                                // Check if widget created
+                                if (success) {
+                                    postMessage(`[INFO] Widget "${existingWidget.name}" created.`);
+                                } else {
+                                    errorMessage += `\tWidget "${existingWidget.name}" not created.\n`;
+                                    postMessage(`[ERROR] Widget "${existingWidget.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -4074,7 +5395,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(workflow).length > 0) {
-                                postMessage(`[WARNING] Workflow with name "${existingWorkflow.name}" already exists.`);
+                                warningMessage += `\tWorkflow with name "${existingWorkflow.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Workflow with name "${existingWorkflow.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create workflow
@@ -4098,19 +5420,58 @@ onmessage = (event) => {
                     // Update flow
                     else if (workflows == "update") {
 
-                        // Update workflow
-                        let success = upsertWorkflow(
+                        // Get workflow
+                        let workflow = getWorkflowById(
                             nccLocation,
                             nccToken,
-                            existingWorkflow
+                            existingWorkflow._id
                         );
 
-                        // Check if workflow updated
-                        if (success) {
-                            postMessage(`[INFO] Workflow "${existingWorkflow.name}" updated.`);
+                        if (Object.keys(workflow).length > 0) {
+
+                            // Update workflow
+                            let success = upsertWorkflow(
+                                nccLocation,
+                                nccToken,
+                                existingWorkflow
+                            );
+
+                            // Check if workflow updated
+                            if (success) {
+                                postMessage(`[INFO] Workflow "${existingWorkflow.name}" updated.`);
+                            } else {
+                                errorMessage += `\tWorkflow "${existingWorkflow.name}" not updated.\n`;
+                                postMessage(`[ERROR] Workflow "${existingWorkflow.name}" not updated.`);
+                            }
                         } else {
-                            errorMessage += `\tWorkflow "${existingWorkflow.name}" not updated.\n`;
-                            postMessage(`[ERROR] Workflow "${existingWorkflow.name}" not updated.`);
+
+                            // Check if workflow with same name already exists
+                            let workflow = getWorkflowByName(
+                                nccLocation,
+                                nccToken,
+                                existingWorkflow.name
+                            );
+
+                            if (Object.keys(workflow).length > 0) {
+                                warningMessage += `\tWorkflow with name "${existingWorkflow.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Workflow with name "${existingWorkflow.name}" exists, but with different ID.`);
+                            } else {
+
+                                // Create workflow
+                                let success = upsertWorkflow(
+                                    nccLocation,
+                                    nccToken,
+                                    existingWorkflow
+                                );
+
+                                // Check if workflow created
+                                if (success) {
+                                    postMessage(`[INFO] Workflow "${existingWorkflow.name}" created.`);
+                                } else {
+                                    errorMessage += `\tWorkflow "${existingWorkflow.name}" not created.\n`;
+                                    postMessage(`[ERROR] Workflow "${existingWorkflow.name}" not created.`);
+                                }
+                            }
                         }
                     }
                 });
@@ -4165,6 +5526,16 @@ onmessage = (event) => {
         postMessage(`[WARNING] The following errors occurred:`);
         postMessage(``);
         postMessage(errorMessage);
+    } else {
+        postMessage(``);
+        postMessage(`[INFO] No errors occurred.`);
+    }
+
+    if (warningMessage != "") {
+        postMessage(``);
+        postMessage(`[WARNING] The following warnings were raised:`);
+        postMessage(``);
+        postMessage(warningMessage);
     }
 
     postMessage(``);
