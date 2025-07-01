@@ -94,6 +94,7 @@ onmessage = (event) => {
     var widgets = config.widgets;
     var dashboards = config.dashboards;
     var importData = JSON.parse(config.importData);
+    var updatedIds = {};
 
     // Initial messages
     var updateMessage = "";
@@ -120,34 +121,45 @@ onmessage = (event) => {
 
         // Business events
         if ("businessEvents" in importData) {
+            let action = config.businessEvents;
+            let businessEvents = importData.businessEvents;
 
-            // Check if user selected update
-            if (businessEvents == "update") {
-                postMessage(`[INFO] Checking business events...`);
+            if (businessEvents.length > 0) {
+                businessEvents.forEach(businessEvent => {
 
-                let businessEvents = importData.businessEvents;
+                    // Get business event
+                    let businessEventFound = getBusinessEventById(
+                        nccLocation,
+                        nccToken,
+                        businessEvent._id
+                    );
 
-                if (businessEvents.length > 0) {
-                    businessEvents.forEach(businessEvent => {
+                    // Check if business event found
+                    if (Object.keys(businessEventFound).length > 0) {
+                        postMessage(`[INFO] Business event "${businessEventFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tBusiness event "${businessEventFound.name}" found, ID: "${businessEvent._id}".\n`;
+                        }
+                    } else {
 
-                        // Get business event
-                        let businessEventFound = getBusinessEventById(
+                        // Check if business event with same name already exists
+                        let businessEventFound = getBusinessEventByName(
                             nccLocation,
                             nccToken,
-                            businessEvent._id
+                            businessEvent.name
                         );
 
-                        // Check if business event found
                         if (Object.keys(businessEventFound).length > 0) {
-                            updateMessage += `\tBusiness event "${businessEventFound.name}"\n`;
-                            postMessage(`[INFO] Business event with ID "${businessEvent._id}" found.`);
+                            updatedIds[businessEvent._id] = businessEventFound._id;
+                            postMessage(`[INFO] Business event "${businessEventFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tBusiness event "${businessEventFound.name}", ID: "${businessEventFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No business events found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Business events not selected for update.`);
+                postMessage(`[INFO] No business events found in import file.`);
             }
         } else {
             errorMessage += `\tNo "businessEvents" property found in import file.\n`;
@@ -156,34 +168,45 @@ onmessage = (event) => {
 
         // Campaign goals
         if ("campaignGoals" in importData) {
+            let action = config.campaignGoals;
+            let campaignGoals = importData.campaignGoals;
 
-            // Check if user selected update
-            if (campaignGoals == "update") {
-                postMessage(`[INFO] Checking campaign goals...`);
+            if (campaignGoals.length > 0) {
+                campaignGoals.forEach(campaignGoal => {
 
-                let campaignGoals = importData.campaignGoals;
+                    // Get campaign goal
+                    let campaignGoalFound = getCampaignGoalsById(
+                        nccLocation,
+                        nccToken,
+                        campaignGoal._id
+                    );
 
-                if (campaignGoals.length > 0) {
-                    campaignGoals.forEach(campaignGoal => {
+                    // Check if campaign goal found
+                    if (Object.keys(campaignGoalFound).length > 0) {
+                        postMessage(`[INFO] Campaign goal "${campaignGoalFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tCampaign goal "${campaignGoalFound.name}" found, ID: "${campaignGoal._id}".\n`;
+                        }
+                    } else {
 
-                        // Get campaign goal
-                        let campaignGoalFound = getCampaignGoalsById(
+                        // Check if campaign goal with same name already exists
+                        let campaignGoalFound = getCampaignGoalByName(
                             nccLocation,
                             nccToken,
-                            campaignGoal._id
+                            campaignGoal.name
                         );
 
-                        // Check if campaign goal found
                         if (Object.keys(campaignGoalFound).length > 0) {
-                            updateMessage += `\tCampaign goal "${campaignGoalFound.name}"\n`;
-                            postMessage(`[INFO] Campaign goal with ID "${campaignGoal._id}" found.`);
+                            updatedIds[campaignGoal._id] = campaignGoalFound._id;
+                            postMessage(`[INFO] Campaign goal "${campaignGoalFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tCampaign goal "${campaignGoalFound.name}", ID: "${campaignGoalFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No campaign goals found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Campaign goals not selected for update.`);
+                postMessage(`[INFO] No campaign goals found in import file.`);
             }
         } else {
             errorMessage += `\tNo "campaignGoals" property found in import file.\n`;
@@ -192,34 +215,45 @@ onmessage = (event) => {
 
         // Campaign scripts
         if ("campaignScripts" in importData) {
+            let action = config.campaignScripts;
+            let campaignScripts = importData.campaignScripts;
 
-            // Check if user selected update
-            if (campaignScripts == "update") {
-                postMessage(`[INFO] Checking campaign scripts...`);
+            if (campaignScripts.length > 0) {
+                campaignScripts.forEach(campaignScript => {
 
-                let campaignScripts = importData.campaignScripts;
+                    // Get campaign script
+                    let campaignScriptFound = getCampaignScriptById(
+                        nccLocation,
+                        nccToken,
+                        campaignScript._id
+                    );
 
-                if (campaignScripts.length > 0) {
-                    campaignScripts.forEach(campaignScript => {
+                    // Check if campaign script found
+                    if (Object.keys(campaignScriptFound).length > 0) {
+                        postMessage(`[INFO] Campaign script "${campaignScriptFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tCampaign script "${campaignScriptFound.name}" found, ID: "${campaignScript._id}".\n`;
+                        }
+                    } else {
 
-                        // Get campaign script
-                        let campaignScriptFound = getCampaignScriptById(
+                        // Check if campaign script with same name already exists
+                        let campaignScriptFound = getCampaignScriptByName(
                             nccLocation,
                             nccToken,
-                            campaignScript._id
+                            campaignScript.name
                         );
 
-                        // Check if campaign script found
                         if (Object.keys(campaignScriptFound).length > 0) {
-                            updateMessage += `\tCampaign script "${campaignScriptFound.name}"\n`;
-                            postMessage(`[INFO] Campaign script with ID "${campaignScript._id}" found.`);
+                            updatedIds[campaignScript._id] = campaignScriptFound._id;
+                            postMessage(`[INFO] Campaign script "${campaignScriptFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tCampaign script "${campaignScriptFound.name}", ID: "${campaignScriptFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No campaign scripts found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Campaign scripts not selected for update.`);
+                postMessage(`[INFO] No campaign scripts found in import file.`);
             }
         } else {
             errorMessage += `\tNo "campaignScripts" property found in import file.\n`;
@@ -228,34 +262,45 @@ onmessage = (event) => {
 
         // Campaigns
         if ("campaigns" in importData) {
+            let action = config.campaigns;
+            let campaigns = importData.campaigns;
 
-            // Check if user selected update
-            if (campaigns == "update") {
-                postMessage(`[INFO] Checking campaigns...`);
+            if (campaigns.length > 0) {
+                campaigns.forEach(campaign => {
 
-                let campaigns = importData.campaigns;
+                    // Get campaign
+                    let campaignFound = getCampaignById(
+                        nccLocation,
+                        nccToken,
+                        campaign._id
+                    );
 
-                if (campaigns.length > 0) {
-                    campaigns.forEach(campaign => {
+                    // Check if campaign found
+                    if (Object.keys(campaignFound).length > 0) {
+                        postMessage(`[INFO] Campaign "${campaignFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tCampaign "${campaignFound.name}" found, ID: "${campaign._id}".\n`;
+                        }
+                    } else {
 
-                        // Get campaign
-                        let campaignFound = getCampaignById(
+                        // Check if campaign with same name already exists
+                        let campaignFound = getCampaignByName(
                             nccLocation,
                             nccToken,
-                            campaign._id
+                            campaign.name
                         );
 
-                        // Check if campaign found
                         if (Object.keys(campaignFound).length > 0) {
-                            updateMessage += `\tCampaign "${campaignFound.name}"\n`;
-                            postMessage(`[INFO] Campaign with ID "${campaign._id}" found.`);
+                            updatedIds[campaign._id] = campaignFound._id;
+                            postMessage(`[INFO] Campaign "${campaignFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tCampaign "${campaignFound.name}", ID: "${campaignFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No campaigns found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Campaigns not selected for update.`);
+                postMessage(`[INFO] No campaigns found in import file.`);
             }
         } else {
             errorMessage += `\tNo "campaigns" property found in import file.\n`;
@@ -264,34 +309,45 @@ onmessage = (event) => {
 
         // Categories
         if ("categories" in importData) {
+            let action = config.categories;
+            let categories = importData.categories;
 
-            // Check if user selected update
-            if (categories == "update") {
-                postMessage(`[INFO] Checking categories...`);
+            if (categories.length > 0) {
+                categories.forEach(category => {
 
-                let categories = importData.categories;
+                    // Get category
+                    let categoryFound = getCategoryById(
+                        nccLocation,
+                        nccToken,
+                        category._id
+                    );
 
-                if (categories.length > 0) {
-                    categories.forEach(category => {
+                    // Check if category found
+                    if (Object.keys(categoryFound).length > 0) {
+                        postMessage(`[INFO] Category "${categoryFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tCategory "${categoryFound.name}" found, ID: "${category._id}".\n`;
+                        }
+                    } else {
 
-                        // Get category
-                        let categoryFound = getCategoryById(
+                        // Check if category with same name already exists
+                        let categoryFound = getCategoryByName(
                             nccLocation,
                             nccToken,
-                            category._id
+                            category.name
                         );
 
-                        // Check if category found
                         if (Object.keys(categoryFound).length > 0) {
-                            updateMessage += `\tCategory "${categoryFound.name}"\n`;
-                            postMessage(`[INFO] Category with ID "${category._id}" found.`);
+                            updatedIds[category._id] = categoryFound._id;
+                            postMessage(`[INFO] Category "${categoryFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tCategory "${categoryFound.name}", ID: "${categoryFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No categories found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Categories not selected for update.`);
+                postMessage(`[INFO] No categories found in import file.`);
             }
         } else {
             errorMessage += `\tNo "categories" property found in import file.\n`;
@@ -300,34 +356,45 @@ onmessage = (event) => {
 
         // Category summaries
         if ("categorySummaries" in importData) {
+            let action = config.categorySummaries;
+            let categorySummaries = importData.categorySummaries;
 
-            // Check if user selected update
-            if (categorySummaries == "update") {
-                postMessage(`[INFO] Checking category summaries...`);
+            if (categorySummaries.length > 0) {
+                categorySummaries.forEach(categorySummary => {
 
-                let categorySummaries = importData.categorySummaries;
+                    // Get category summary
+                    let categorySummaryFound = getCategorySummaryById(
+                        nccLocation,
+                        nccToken,
+                        categorySummary._id
+                    );
 
-                if (categorySummaries.length > 0) {
-                    categorySummaries.forEach(categorySummary => {
+                    // Check if category summary found
+                    if (Object.keys(categorySummaryFound).length > 0) {
+                        postMessage(`[INFO] Category summary "${categorySummaryFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tCategory summary "${categorySummaryFound.name}" found, ID: "${categorySummary._id}".\n`;
+                        }
+                    } else {
 
-                        // Get category summary
-                        let categorySummaryFound = getCategorySummaryById(
+                        // Check if category summary with same name already exists
+                        let categorySummaryFound = getCategorySummaryByName(
                             nccLocation,
                             nccToken,
-                            categorySummary._id
+                            categorySummary.name
                         );
 
-                        // Check if category summary found
                         if (Object.keys(categorySummaryFound).length > 0) {
-                            updateMessage += `\tCategory summary "${categorySummaryFound.name}"\n`;
-                            postMessage(`[INFO] Category summary with ID "${categorySummary._id}" found.`);
+                            updatedIds[categorySummary._id] = categorySummaryFound._id;
+                            postMessage(`[INFO] Category summary "${categorySummaryFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tCategory summary "${categorySummaryFound.name}", ID: "${categorySummaryFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No category summaries found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Category summaries not selected for update.`);
+                postMessage(`[INFO] No category summaries found in import file.`);
             }
         } else {
             errorMessage += `\tNo "categorySummaries" property found in import file.\n`;
@@ -336,34 +403,45 @@ onmessage = (event) => {
 
         // Classifications
         if ("classifications" in importData) {
+            let action = config.classifications;
+            let classifications = importData.classifications;
 
-            // Check if user selected update
-            if (classifications == "update") {
-                postMessage(`[INFO] Checking classifications...`);
+            if (classifications.length > 0) {
+                classifications.forEach(classification => {
 
-                let classifications = importData.classifications;
+                    // Get classification
+                    let classificationFound = getClassificationById(
+                        nccLocation,
+                        nccToken,
+                        classification._id
+                    );
 
-                if (classifications.length > 0) {
-                    classifications.forEach(classification => {
+                    // Check if classification found
+                    if (Object.keys(classificationFound).length > 0) {
+                        postMessage(`[INFO] Classification "${classificationFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tClassification "${classificationFound.name}" found, ID: "${classification._id}".\n`;
+                        }
+                    } else {
 
-                        // Get classification
-                        let classificationFound = getClassificationById(
+                        // Check if classification with same name already exists
+                        let classificationFound = getBusinessEventByName(
                             nccLocation,
                             nccToken,
-                            classification._id
+                            classification.name
                         );
 
-                        // Check if classification found
                         if (Object.keys(classificationFound).length > 0) {
-                            updateMessage += `\tClassification "${classificationFound.name}"\n`;
-                            postMessage(`[INFO] Classification with ID "${classification._id}" found.`);
+                            updatedIds[classification._id] = classificationFound._id;
+                            postMessage(`[INFO] Classification "${classificationFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tClassification "${classificationFound.name}", ID: "${classificationFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No classifications found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Classifications not selected for update.`);
+                postMessage(`[INFO] No classifications found in import file.`);
             }
         } else {
             errorMessage += `\tNo "classifications" property found in import file.\n`;
@@ -372,34 +450,45 @@ onmessage = (event) => {
 
         // Dashboards
         if ("dashboards" in importData) {
+            let action = config.dashboards;
+            let dashboards = importData.dashboards;
 
-            // Check if user selected update
-            if (dashboards == "update") {
-                postMessage(`[INFO] Checking dashboards...`);
+            if (dashboards.length > 0) {
+                dashboards.forEach(dashboard => {
 
-                let dashboards = importData.dashboards;
+                    // Get dashboard
+                    let dashboardFound = getDashboardById(
+                        nccLocation,
+                        nccToken,
+                        dashboard._id
+                    );
 
-                if (dashboards.length > 0) {
-                    dashboards.forEach(dashboard => {
+                    // Check if dashboard found
+                    if (Object.keys(dashboardFound).length > 0) {
+                        postMessage(`[INFO] Dashboard "${dashboardFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tDashboard "${dashboardFound.name}" found, ID: "${dashboard._id}".\n`;
+                        }
+                    } else {
 
-                        // Get dashboard
-                        let dashboardFound = getDashboardById(
+                        // Check if dashboard with same name already exists
+                        let dashboardFound = getDashboardByName(
                             nccLocation,
                             nccToken,
-                            dashboard._id
+                            dashboard.name
                         );
 
-                        // Check if dashboard found
                         if (Object.keys(dashboardFound).length > 0) {
-                            updateMessage += `\tDashboard "${dashboardFound.name}"\n`;
-                            postMessage(`[INFO] Dashboard with ID "${dashboard._id}" found.`);
+                            updatedIds[dashboard._id] = dashboardFound._id;
+                            postMessage(`[INFO] Dashboard "${dashboardFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tDashboard "${dashboardFound.name}", ID: "${dashboardFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No dashboards found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Dashboards not selected for update.`);
+                postMessage(`[INFO] No dashboards found in import file.`);
             }
         } else {
             errorMessage += `\tNo "dashboards" property found in import file.\n`;
@@ -408,34 +497,45 @@ onmessage = (event) => {
 
         // Dial plans
         if ("dialPlans" in importData) {
+            let action = config.dialPlans;
+            let dialPlans = importData.dialPlans;
 
-            // Check if user selected update
-            if (dialPlans == "update") {
-                postMessage(`[INFO] Checking dial plans...`);
+            if (dialPlans.length > 0) {
+                dialPlans.forEach(dialPlan => {
 
-                let dialPlans = importData.dialPlans;
+                    // Get dial plan
+                    let dialPlanFound = getDialPlanById(
+                        nccLocation,
+                        nccToken,
+                        dialPlan._id
+                    );
 
-                if (dialPlans.length > 0) {
-                    dialPlans.forEach(dialPlan => {
+                    // Check if dial plan found
+                    if (Object.keys(dialPlanFound).length > 0) {
+                        postMessage(`[INFO] Business event "${dialPlanFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tBusiness event "${dialPlanFound.name}" found, ID: "${dialPlan._id}".\n`;
+                        }
+                    } else {
 
-                        // Get dial plan
-                        let dialPlanFound = getDialPlanById(
+                        // Check if dial plan with same name already exists
+                        let dialPlanFound = getDialPlanByName(
                             nccLocation,
                             nccToken,
-                            dialPlan._id
+                            dialPlan.name
                         );
 
-                        // Check if dial plan found
                         if (Object.keys(dialPlanFound).length > 0) {
-                            updateMessage += `\tDial plan "${dialPlanFound.name}"\n`;
-                            postMessage(`[INFO] Dial plan with ID "${dialPlan._id}" found.`);
+                            updatedIds[dialPlan._id] = dialPlanFound._id;
+                            postMessage(`[INFO] Business event "${dialPlanFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tBusiness event "${dialPlanFound.name}", ID: "${dialPlanFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No dial plans found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Dial plans not selected for update.`);
+                postMessage(`[INFO] No dial plans found in import file.`);
             }
         } else {
             errorMessage += `\tNo "dialPlans" property found in import file.\n`;
@@ -444,34 +544,45 @@ onmessage = (event) => {
 
         // Dispositions
         if ("dispositions" in importData) {
+            let action = config.dispositions;
+            let dispositions = importData.dispositions;
 
-            // Check if user selected update
-            if (dispositions == "update") {
-                postMessage(`[INFO] Checking dispositions...`);
+            if (dispositions.length > 0) {
+                dispositions.forEach(disposition => {
 
-                let dispositions = importData.dispositions;
+                    // Get disposition
+                    let dispositionFound = getDispositionById(
+                        nccLocation,
+                        nccToken,
+                        disposition._id
+                    );
 
-                if (dispositions.length > 0) {
-                    dispositions.forEach(disposition => {
+                    // Check if disposition found
+                    if (Object.keys(dispositionFound).length > 0) {
+                        postMessage(`[INFO] Disposition "${dispositionFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tDisposition "${dispositionFound.name}" found, ID: "${disposition._id}".\n`;
+                        }
+                    } else {
 
-                        // Get disposition
-                        let dispositionFound = getDispositionById(
+                        // Check if disposition with same name already exists
+                        let dispositionFound = getDispositionByName(
                             nccLocation,
                             nccToken,
-                            disposition._id
+                            disposition.name
                         );
 
-                        // Check if disposition found
                         if (Object.keys(dispositionFound).length > 0) {
-                            updateMessage += `\tDisposition "${dispositionFound.name}"\n`;
-                            postMessage(`[INFO] Disposition with ID "${disposition._id}" found.`);
+                            updatedIds[disposition._id] = dispositionFound._id;
+                            postMessage(`[INFO] Disposition "${dispositionFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tDisposition "${dispositionFound.name}", ID: "${dispositionFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No dispositions found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Dispositions not selected for update.`);
+                postMessage(`[INFO] No dispositions found in import file.`);
             }
         } else {
             errorMessage += `\tNo "dispositions" property found in import file.\n`;
@@ -480,70 +591,92 @@ onmessage = (event) => {
 
         // Entities
         if ("entities" in importData) {
+            let action = config.entities;
+            let entities = importData.entities;
 
-            // Check if user selected update
-            if (entities == "update") {
-                postMessage(`[INFO] Checking entities...`);
+            if (entities.length > 0) {
+                entities.forEach(entity => {
 
-                let entities = importData.entities;
+                    // Get entity
+                    let entityFound = getEntityById(
+                        nccLocation,
+                        nccToken,
+                        entity._id
+                    );
 
-                if (entities.length > 0) {
-                    entities.forEach(entity => {
+                    // Check if entity found
+                    if (Object.keys(entityFound).length > 0) {
+                        postMessage(`[INFO] Entity "${entityFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tEntity "${entityFound.name}" found, ID: "${entity._id}".\n`;
+                        }
+                    } else {
 
-                        // Get entity
-                        let entityFound = getEntityById(
+                        // Check if entity with same name already exists
+                        let entityFound = getEntityByName(
                             nccLocation,
                             nccToken,
-                            entity._id
+                            entity.name
                         );
 
-                        // Check if entity found
                         if (Object.keys(entityFound).length > 0) {
-                            updateMessage += `\tEntity "${entityFound.name}"\n`;
-                            postMessage(`[INFO] Entity with ID "${entity._id}" found.`);
+                            updatedIds[entity._id] = entityFound._id;
+                            postMessage(`[INFO] Entity "${entityFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tEntity "${entityFound.name}", ID: "${entityFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No entities found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Entities not selected for update.`);
+                postMessage(`[INFO] No entities found in import file.`);
             }
         } else {
             errorMessage += `\tNo "entities" property found in import file.\n`;
             fileIsValid = false;
         }
 
-        // Field mappingss
+        // Field mappings
         if ("fieldMappings" in importData) {
+            let action = config.fieldMappings;
+            let fieldMappings = importData.fieldMappings;
 
-            // Check if user selected update
-            if (fieldMappings == "update") {
-                postMessage(`[INFO] Checking field mappings...`);
+            if (fieldMappings.length > 0) {
+                fieldMappings.forEach(fieldMapping => {
 
-                let fieldMappings = importData.fieldMappings;
+                    // Get field mapping
+                    let fieldMappingFound = getFieldMappingsById(
+                        nccLocation,
+                        nccToken,
+                        fieldMapping._id
+                    );
 
-                if (fieldMappings.length > 0) {
-                    fieldMappings.forEach(fieldMapping => {
+                    // Check if field mappings found
+                    if (Object.keys(fieldMappingFound).length > 0) {
+                        postMessage(`[INFO] Field mappings "${fieldMappingFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tField mappings "${fieldMappingFound.name}" found, ID: "${fieldMapping._id}".\n`;
+                        }
+                    } else {
 
-                        // Get field mappings
-                        let fieldMappingFound = getFieldMappingsById(
+                        // Check if field mappings with same name already exists
+                        let fieldMappingFound = getFieldMappingsByName(
                             nccLocation,
                             nccToken,
-                            fieldMapping._id
+                            fieldMapping.name
                         );
 
-                        // Check if field mappings found
                         if (Object.keys(fieldMappingFound).length > 0) {
-                            updateMessage += `\tField mappings "${fieldMappingFound.name}"\n`;
-                            postMessage(`[INFO] Field mappings with ID "${fieldMapping._id}" found.`);
+                            updatedIds[fieldMapping._id] = fieldMappingFound._id;
+                            postMessage(`[INFO] Field mappings "${fieldMappingFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tField mappings "${fieldMappingFound.name}", ID: "${fieldMappingFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No field mappings found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Field mappings not selected for update.`);
+                postMessage(`[INFO] No field mappings found in import file.`);
             }
         } else {
             errorMessage += `\tNo "fieldMappings" property found in import file.\n`;
@@ -552,34 +685,45 @@ onmessage = (event) => {
 
         // File servers
         if ("fileServers" in importData) {
+            let action = config.fileServers;
+            let fileServers = importData.fileServers;
 
-            // Check if user selected update
-            if (fileServers == "update") {
-                postMessage(`[INFO] Checking file servers...`);
+            if (fileServers.length > 0) {
+                fileServers.forEach(fileServer => {
 
-                let fileServers = importData.fileServers;
+                    // Get file server
+                    let fileServerFound = getFileServerById(
+                        nccLocation,
+                        nccToken,
+                        fileServer._id
+                    );
 
-                if (fileServers.length > 0) {
-                    fileServers.forEach(fileServer => {
+                    // Check if file server found
+                    if (Object.keys(fileServerFound).length > 0) {
+                        postMessage(`[INFO] File server "${fileServerFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tFile server "${fileServerFound.name}" found, ID: "${fileServer._id}".\n`;
+                        }
+                    } else {
 
-                        // Get file server
-                        let fileServerFound = getFileServerById(
+                        // Check if file server with same name already exists
+                        let fileServerFound = getFileServerByName(
                             nccLocation,
                             nccToken,
-                            fileServer._id
+                            fileServer.name
                         );
 
-                        // Check if file server found
                         if (Object.keys(fileServerFound).length > 0) {
-                            updateMessage += `\tFile server "${fileServerFound.name}"\n`;
-                            postMessage(`[INFO] File server with ID "${fileServer._id}" found.`);
+                            updatedIds[fileServer._id] = fileServerFound._id;
+                            postMessage(`[INFO] File server "${fileServerFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tFile server "${fileServerFound.name}", ID: "${fileServerFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No file servers found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] File servers not selected for update.`);
+                postMessage(`[INFO] No file servers found in import file.`);
             }
         } else {
             errorMessage += `\tNo "fileServers" property found in import file.\n`;
@@ -588,34 +732,45 @@ onmessage = (event) => {
 
         // Filters
         if ("filters" in importData) {
+            let action = config.filters;
+            let filters = importData.filters;
 
-            // Check if user selected update
-            if (filters == "update") {
-                postMessage(`[INFO] Checking filters...`);
+            if (filters.length > 0) {
+                filters.forEach(filter => {
 
-                let filters = importData.filters;
+                    // Get filter
+                    let filterFound = getFilterById(
+                        nccLocation,
+                        nccToken,
+                        filter._id
+                    );
 
-                if (filters.length > 0) {
-                    filters.forEach(filter => {
+                    // Check if filter found
+                    if (Object.keys(filterFound).length > 0) {
+                        postMessage(`[INFO] Filter "${filterFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tFilter "${filterFound.name}" found, ID: "${filter._id}".\n`;
+                        }
+                    } else {
 
-                        // Get filter
-                        let filterFound = getFilterById(
+                        // Check if filter with same name already exists
+                        let filterFound = getFilterByName(
                             nccLocation,
                             nccToken,
-                            filter._id
+                            filter.name
                         );
 
-                        // Check if filter found
                         if (Object.keys(filterFound).length > 0) {
-                            updateMessage += `\tFilter "${filterFound.name}"\n`;
-                            postMessage(`[INFO] Filter with ID "${filter._id}" found.`);
+                            updatedIds[filter._id] = filterFound._id;
+                            postMessage(`[INFO] Filter "${filterFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tFilter "${filterFound.name}", ID: "${filterFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No filters found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Filters not selected for update.`);
+                postMessage(`[INFO] No filters found in import file.`);
             }
         } else {
             errorMessage += `\tNo "filters" property found in import file.\n`;
@@ -624,34 +779,45 @@ onmessage = (event) => {
 
         // Functions
         if ("functions" in importData) {
+            let action = config.functions;
+            let functions = importData.functions;
 
-            // Check if user selected update
-            if (functions == "update") {
-                postMessage(`[INFO] Checking functions...`);
+            if (functions.length > 0) {
+                functions.forEach(nccFunction => {
 
-                let functions = importData.functions;
+                    // Get function
+                    let functionFound = getFunctionById(
+                        nccLocation,
+                        nccToken,
+                        nccFunction._id
+                    );
 
-                if (functions.length > 0) {
-                    functions.forEach(nccFunction => {
+                    // Check if function found
+                    if (Object.keys(functionFound).length > 0) {
+                        postMessage(`[INFO] Function "${functionFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tFunction "${functionFound.name}" found, ID: "${nccFunction._id}".\n`;
+                        }
+                    } else {
 
-                        // Get function
-                        let functionFound = getFunctionById(
+                        // Check if function with same name already exists
+                        let functionFound = getFunctionByName(
                             nccLocation,
                             nccToken,
-                            nccFunction._id
+                            nccFunction.name
                         );
 
-                        // Check if function found
                         if (Object.keys(functionFound).length > 0) {
-                            updateMessage += `\tFunction "${functionFound.name}"\n`;
-                            postMessage(`[INFO] Function with ID "${nccFunction._id}" found.`);
+                            updatedIds[nccFunction._id] = functionFound._id;
+                            postMessage(`[INFO] Function "${functionFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tFunction "${functionFound.name}", ID: "${functionFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No functions found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Functions not selected for update.`);
+                postMessage(`[INFO] No functions found in import file.`);
             }
         } else {
             errorMessage += `\tNo "functions" property found in import file.\n`;
@@ -660,70 +826,92 @@ onmessage = (event) => {
 
         // Home tabs
         if ("homeTabs" in importData) {
+            let action = config.homeTabs;
+            let homeTabs = importData.homeTabs;
 
-            // Check if user selected update
-            if (homeTabs == "update") {
-                postMessage(`[INFO] Checking home tabs...`);
+            if (homeTabs.length > 0) {
+                homeTabs.forEach(homeTab => {
 
-                let homeTabs = importData.homeTabs;
+                    // Get home tab
+                    let homeTabFound = getHomeTabById(
+                        nccLocation,
+                        nccToken,
+                        homeTab._id
+                    );
 
-                if (homeTabs.length > 0) {
-                    homeTabs.forEach(homeTab => {
+                    // Check if home tab found
+                    if (Object.keys(homeTabFound).length > 0) {
+                        postMessage(`[INFO] Home tab "${homeTabFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tHome tab "${homeTabFound.name}" found, ID: "${homeTab._id}".\n`;
+                        }
+                    } else {
 
-                        // Get home tab
-                        let homeTabFound = getHomeTabById(
+                        // Check if home tab with same name already exists
+                        let homeTabFound = getHomeTabByName(
                             nccLocation,
                             nccToken,
-                            homeTab._id
+                            homeTab.name
                         );
 
-                        // Check if home tab found
                         if (Object.keys(homeTabFound).length > 0) {
-                            updateMessage += `\tHome tab "${homeTabFound.name}"\n`;
-                            postMessage(`[INFO] Home tab with ID "${homeTab._id}" found.`);
+                            updatedIds[homeTab._id] = homeTabFound._id;
+                            postMessage(`[INFO] Home tab "${homeTabFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tHome tab "${homeTabFound.name}", ID: "${homeTabFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No home tabs found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Home tabs not selected for update.`);
+                postMessage(`[INFO] No home tabs found in import file.`);
             }
         } else {
-            errorMessage += `\tNo "home tabs" property found in import file.\n`;
+            errorMessage += `\tNo "homeTabs" property found in import file.\n`;
             fileIsValid = false;
         }
 
         // Music
         if ("music" in importData) {
+            let action = config.music;
+            let music = importData.music;
 
-            // Check if user selected update
-            if (music == "update") {
-                postMessage(`[INFO] Checking music...`);
+            if (music.length > 0) {
+                music.forEach(music => {
 
-                let music = importData.music;
+                    // Get music
+                    let musicFound = getMusicById(
+                        nccLocation,
+                        nccToken,
+                        music._id
+                    );
 
-                if (music.length > 0) {
-                    music.forEach(music => {
+                    // Check if music found
+                    if (Object.keys(musicFound).length > 0) {
+                        postMessage(`[INFO] Music "${musicFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tMusic "${musicFound.name}" found, ID: "${music._id}".\n`;
+                        }
+                    } else {
 
-                        // Get music
-                        let musicFound = getMusicById(
+                        // Check if music with same name already exists
+                        let musicFound = getMusicByName(
                             nccLocation,
                             nccToken,
-                            music._id
+                            music.name
                         );
 
-                        // Check if music found
                         if (Object.keys(musicFound).length > 0) {
-                            updateMessage += `\tMusic "${musicFound.name}"\n`;
-                            postMessage(`[INFO] Music with ID "${music._id}" found.`);
+                            updatedIds[music._id] = musicFound._id;
+                            postMessage(`[INFO] Music "${musicFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tMusic "${musicFound.name}", ID: "${musicFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No music found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Music not selected for update.`);
+                postMessage(`[INFO] No music found in import file.`);
             }
         } else {
             errorMessage += `\tNo "music" property found in import file.\n`;
@@ -732,34 +920,45 @@ onmessage = (event) => {
 
         // Partitions
         if ("partitions" in importData) {
+            let action = config.partitions;
+            let partitions = importData.partitions;
 
-            // Check if user selected update
-            if (partitions == "update") {
-                postMessage(`[INFO] Checking partitions...`);
+            if (partitions.length > 0) {
+                partitions.forEach(partition => {
 
-                let partitions = importData.partitions;
+                    // Get partition
+                    let partitionFound = getPartitionById(
+                        nccLocation,
+                        nccToken,
+                        partition._id
+                    );
 
-                if (partitions.length > 0) {
-                    partitions.forEach(partition => {
+                    // Check if partition found
+                    if (Object.keys(partitionFound).length > 0) {
+                        postMessage(`[INFO] Partition "${partitionFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tPartition "${partitionFound.name}" found, ID: "${partition._id}".\n`;
+                        }
+                    } else {
 
-                        // Get partition
-                        let partitionFound = getPartitionById(
+                        // Check if partition with same name already exists
+                        let partitionFound = getPartitionByName(
                             nccLocation,
                             nccToken,
-                            partition._id
+                            partition.name
                         );
 
-                        // Check if partition found
                         if (Object.keys(partitionFound).length > 0) {
-                            updateMessage += `\tPartition "${partitionFound.name}"\n`;
-                            postMessage(`[INFO] Partition with ID "${partition._id}" found.`);
+                            updatedIds[partition._id] = partitionFound._id;
+                            postMessage(`[INFO] Partition "${partitionFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tPartition "${partitionFound.name}", ID: "${partitionFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No partitions found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Partitions not selected for update.`);
+                postMessage(`[INFO] No partitions found in import file.`);
             }
         } else {
             errorMessage += `\tNo "partitions" property found in import file.\n`;
@@ -768,34 +967,45 @@ onmessage = (event) => {
 
         // Prompts
         if ("prompts" in importData) {
+            let action = config.prompts;
+            let prompts = importData.prompts;
 
-            // Check if user selected update
-            if (prompts == "update") {
-                postMessage(`[INFO] Checking prompts...`);
+            if (prompts.length > 0) {
+                prompts.forEach(prompt => {
 
-                let prompts = importData.prompts;
+                    // Get prompt
+                    let promptFound = getPromptById(
+                        nccLocation,
+                        nccToken,
+                        prompt._id
+                    );
 
-                if (prompts.length > 0) {
-                    prompts.forEach(prompt => {
+                    // Check if prompt found
+                    if (Object.keys(promptFound).length > 0) {
+                        postMessage(`[INFO] Prompt "${promptFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tPrompt "${promptFound.name}" found, ID: "${prompt._id}".\n`;
+                        }
+                    } else {
 
-                        // Get prompt
-                        let promptFound = getPromptById(
+                        // Check if prompt with same name already exists
+                        let promptFound = getPromptByName(
                             nccLocation,
                             nccToken,
-                            prompt._id
+                            prompt.name
                         );
 
-                        // Check if prompt found
                         if (Object.keys(promptFound).length > 0) {
-                            updateMessage += `\tPrompt "${promptFound.name}"\n`;
-                            postMessage(`[INFO] Prompt with ID "${prompt._id}" found.`);
+                            updatedIds[prompt._id] = promptFound._id;
+                            postMessage(`[INFO] Prompt "${promptFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tPrompt "${promptFound.name}", ID: "${promptFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No prompts found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Prompts not selected for update.`);
+                postMessage(`[INFO] No prompts found in import file.`);
             }
         } else {
             errorMessage += `\tNo "prompts" property found in import file.\n`;
@@ -804,34 +1014,45 @@ onmessage = (event) => {
 
         // Queues
         if ("queues" in importData) {
+            let action = config.queues;
+            let queues = importData.queues;
 
-            // Check if user selected update
-            if (queues == "update") {
-                postMessage(`[INFO] Checking queues...`);
+            if (queues.length > 0) {
+                queues.forEach(queue => {
 
-                let queues = importData.queues;
+                    // Get queue
+                    let queueFound = getQueueById(
+                        nccLocation,
+                        nccToken,
+                        queue._id
+                    );
 
-                if (queues.length > 0) {
-                    queues.forEach(queue => {
+                    // Check if queue found
+                    if (Object.keys(queueFound).length > 0) {
+                        postMessage(`[INFO] Queue "${queueFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tQueue "${queueFound.name}" found, ID: "${queue._id}".\n`;
+                        }
+                    } else {
 
-                        // Get queue
-                        let queueFound = getQueueById(
+                        // Check if queue with same name already exists
+                        let queueFound = getQueueByName(
                             nccLocation,
                             nccToken,
-                            queue._id
+                            queue.name
                         );
 
-                        // Check if queue found
                         if (Object.keys(queueFound).length > 0) {
-                            updateMessage += `\tQueue "${queueFound.name}"\n`;
-                            postMessage(`[INFO] Queue with ID "${queue._id}" found.`);
+                            updatedIds[queue._id] = queueFound._id;
+                            postMessage(`[INFO] Queue "${queueFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tQueue "${queueFound.name}", ID: "${queueFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No queues found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Queues not selected for update.`);
+                postMessage(`[INFO] No queues found in import file.`);
             }
         } else {
             errorMessage += `\tNo "queues" property found in import file.\n`;
@@ -840,34 +1061,45 @@ onmessage = (event) => {
 
         // Reports
         if ("reports" in importData) {
+            let action = config.reports;
+            let reports = importData.reports;
 
-            // Check if user selected update
-            if (reports == "update") {
-                postMessage(`[INFO] Checking reports...`);
+            if (reports.length > 0) {
+                reports.forEach(report => {
 
-                let reports = importData.reports;
+                    // Get report
+                    let reportFound = getReportById(
+                        nccLocation,
+                        nccToken,
+                        report._id
+                    );
 
-                if (reports.length > 0) {
-                    reports.forEach(report => {
+                    // Check if report found
+                    if (Object.keys(reportFound).length > 0) {
+                        postMessage(`[INFO] Report "${reportFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tReport "${reportFound.name}" found, ID: "${report._id}".\n`;
+                        }
+                    } else {
 
-                        // Get report
-                        let reportFound = getReportById(
+                        // Check if report with same name already exists
+                        let reportFound = getReportByName(
                             nccLocation,
                             nccToken,
-                            report._id
+                            report.name
                         );
 
-                        // Check if report found
                         if (Object.keys(reportFound).length > 0) {
-                            updateMessage += `\tReport "${reportFound.name}"\n`;
-                            postMessage(`[INFO] Report with ID "${report._id}" found.`);
+                            updatedIds[report._id] = reportFound._id;
+                            postMessage(`[INFO] Report "${reportFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tReport "${reportFound.name}", ID: "${reportFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No reports found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Reports not selected for update.`);
+                postMessage(`[INFO] No reports found in import file.`);
             }
         } else {
             errorMessage += `\tNo "reports" property found in import file.\n`;
@@ -876,34 +1108,45 @@ onmessage = (event) => {
 
         // REST calls
         if ("restCalls" in importData) {
+            let action = config.restCalls;
+            let restCalls = importData.restCalls;
 
-            // Check if user selected update
-            if (restCalls == "update") {
-                postMessage(`[INFO] Checking REST calls...`);
+            if (restCalls.length > 0) {
+                restCalls.forEach(restCall => {
 
-                let restCalls = importData.restCalls;
+                    // Get REST call
+                    let restCallFound = getRestCallById(
+                        nccLocation,
+                        nccToken,
+                        restCall._id
+                    );
 
-                if (restCalls.length > 0) {
-                    restCalls.forEach(restCall => {
+                    // Check if REST call found
+                    if (Object.keys(restCallFound).length > 0) {
+                        postMessage(`[INFO] REST call "${restCallFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tREST call "${restCallFound.name}" found, ID: "${restCall._id}".\n`;
+                        }
+                    } else {
 
-                        // Get REST call
-                        let restCallFound = getRestCallById(
+                        // Check if REST call with same name already exists
+                        let restCallFound = getRestCallByName(
                             nccLocation,
                             nccToken,
-                            restCall._id
+                            restCall.name
                         );
 
-                        // Check if REST call found
                         if (Object.keys(restCallFound).length > 0) {
-                            updateMessage += `\tREST call "${restCallFound.name}"\n`;
-                            postMessage(`[INFO] REST call with ID "${restCall._id}" found.`);
+                            updatedIds[restCall._id] = restCallFound._id;
+                            postMessage(`[INFO] REST call "${restCallFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tREST call "${restCallFound.name}", ID: "${restCallFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No REST calls found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] REST calls not selected for update.`);
+                postMessage(`[INFO] No REST calls found in import file.`);
             }
         } else {
             errorMessage += `\tNo "restCalls" property found in import file.\n`;
@@ -912,34 +1155,45 @@ onmessage = (event) => {
 
         // Scorecards
         if ("scorecards" in importData) {
+            let action = config.scorecards;
+            let scorecards = importData.scorecards;
 
-            // Check if user selected update
-            if (scorecards == "update") {
-                postMessage(`[INFO] Checking scorecards...`);
+            if (scorecards.length > 0) {
+                scorecards.forEach(scorecard => {
 
-                let scorecards = importData.scorecards;
+                    // Get scorecard
+                    let scorecardFound = getScorecardById(
+                        nccLocation,
+                        nccToken,
+                        scorecard._id
+                    );
 
-                if (scorecards.length > 0) {
-                    scorecards.forEach(scorecard => {
+                    // Check if scorecard found
+                    if (Object.keys(scorecardFound).length > 0) {
+                        postMessage(`[INFO] Scorecard "${scorecardFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tScorecard "${scorecardFound.name}" found, ID: "${scorecard._id}".\n`;
+                        }
+                    } else {
 
-                        // Get scorecard
-                        let scorecardFound = getScorecardById(
+                        // Check if scorecard with same name already exists
+                        let scorecardFound = getScorecardByName(
                             nccLocation,
                             nccToken,
-                            scorecard._id
+                            scorecard.name
                         );
 
-                        // Check if scorecard found
                         if (Object.keys(scorecardFound).length > 0) {
-                            updateMessage += `\tScorecard "${scorecardFound.name}"\n`;
-                            postMessage(`[INFO] Scorecard with ID "${scorecard._id}" found.`);
+                            updatedIds[scorecard._id] = scorecardFound._id;
+                            postMessage(`[INFO] Scorecard "${scorecardFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tScorecard "${scorecardFound.name}", ID: "${scorecardFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No scorecards found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Scorecards not selected for update.`);
+                postMessage(`[INFO] No scorecards found in import file.`);
             }
         } else {
             errorMessage += `\tNo "scorecards" property found in import file.\n`;
@@ -948,34 +1202,45 @@ onmessage = (event) => {
 
         // Scripts
         if ("scripts" in importData) {
+            let action = config.scripts;
+            let scripts = importData.scripts;
 
-            // Check if user selected update
-            if (scripts == "update") {
-                postMessage(`[INFO] Checking scripts...`);
+            if (scripts.length > 0) {
+                scripts.forEach(script => {
 
-                let scripts = importData.scripts;
+                    // Get script
+                    let scriptFound = getScriptById(
+                        nccLocation,
+                        nccToken,
+                        script._id
+                    );
 
-                if (scripts.length > 0) {
-                    scripts.forEach(script => {
+                    // Check if script found
+                    if (Object.keys(scriptFound).length > 0) {
+                        postMessage(`[INFO] Script "${scriptFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tScript "${scriptFound.name}" found, ID: "${script._id}".\n`;
+                        }
+                    } else {
 
-                        // Get script
-                        let scriptFound = getScriptById(
+                        // Check if script with same name already exists
+                        let scriptFound = getScriptByName(
                             nccLocation,
                             nccToken,
-                            script._id
+                            script.name
                         );
 
-                        // Check if script found
                         if (Object.keys(scriptFound).length > 0) {
-                            updateMessage += `\tScript "${scriptFound.name}"\n`;
-                            postMessage(`[INFO] Script with ID "${script._id}" found.`);
+                            updatedIds[script._id] = scriptFound._id;
+                            postMessage(`[INFO] Script "${scriptFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tScript "${scriptFound.name}", ID: "${scriptFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No scripts found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Scripts not selected for update.`);
+                postMessage(`[INFO] No scripts found in import file.`);
             }
         } else {
             errorMessage += `\tNo "scripts" property found in import file.\n`;
@@ -984,34 +1249,45 @@ onmessage = (event) => {
 
         // Skills
         if ("skills" in importData) {
+            let action = config.skills;
+            let skills = importData.skills;
 
-            // Check if user selected update
-            if (skills == "update") {
-                postMessage(`[INFO] Checking skills...`);
+            if (skills.length > 0) {
+                skills.forEach(skill => {
 
-                let skills = importData.skills;
+                    // Get skill
+                    let skillFound = getSkillById(
+                        nccLocation,
+                        nccToken,
+                        skill._id
+                    );
 
-                if (skills.length > 0) {
-                    skills.forEach(skill => {
+                    // Check if skill found
+                    if (Object.keys(skillFound).length > 0) {
+                        postMessage(`[INFO] Skill "${skillFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tSkill "${skillFound.name}" found, ID: "${skill._id}".\n`;
+                        }
+                    } else {
 
-                        // Get skill
-                        let skillFound = getSkillById(
+                        // Check if skill with same name already exists
+                        let skillFound = getSkillByName(
                             nccLocation,
                             nccToken,
-                            skill._id
+                            skill.name
                         );
 
-                        // Check if skill found
                         if (Object.keys(skillFound).length > 0) {
-                            updateMessage += `\tSkill "${skillFound.name}"\n`;
-                            postMessage(`[INFO] Skill with ID "${skill._id}" found.`);
+                            updatedIds[skill._id] = skillFound._id;
+                            postMessage(`[INFO] Skill "${skillFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tSkill "${skillFound.name}", ID: "${skillFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No skills found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Skills not selected for update.`);
+                postMessage(`[INFO] No skills found in import file.`);
             }
         } else {
             errorMessage += `\tNo "skills" property found in import file.\n`;
@@ -1020,34 +1296,45 @@ onmessage = (event) => {
 
         // State DIDs
         if ("stateDids" in importData) {
+            let action = config.stateDids;
+            let stateDids = importData.stateDids;
 
-            // Check if user selected update
-            if (stateDids == "update") {
-                postMessage(`[INFO] Checking state DIDs...`);
+            if (stateDids.length > 0) {
+                stateDids.forEach(stateDid => {
 
-                let stateDids = importData.stateDids;
+                    // Get state DID
+                    let stateDidFound = getStateDidById(
+                        nccLocation,
+                        nccToken,
+                        stateDid._id
+                    );
 
-                if (stateDids.length > 0) {
-                    stateDids.forEach(stateDid => {
+                    // Check if state DID found
+                    if (Object.keys(stateDidFound).length > 0) {
+                        postMessage(`[INFO] State DID "${stateDidFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tState DID "${stateDidFound.name}" found, ID: "${stateDid._id}".\n`;
+                        }
+                    } else {
 
-                        // Get state DID
-                        let stateDidFound = getStateDidById(
+                        // Check if state DID with same name already exists
+                        let stateDidFound = getStateDidByName(
                             nccLocation,
                             nccToken,
-                            stateDid._id
+                            stateDid.name
                         );
 
-                        // Check if state DID found
                         if (Object.keys(stateDidFound).length > 0) {
-                            updateMessage += `\tState DID "${stateDidFound.name}"\n`;
-                            postMessage(`[INFO] State DID with ID "${stateDid._id}" found.`);
+                            updatedIds[stateDid._id] = stateDidFound._id;
+                            postMessage(`[INFO] State DID "${stateDidFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tState DID "${stateDidFound.name}", ID: "${stateDidFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No state DIDs found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] State DIDs not selected for update.`);
+                postMessage(`[INFO] No state DIDs found in import file.`);
             }
         } else {
             errorMessage += `\tNo "stateDids" property found in import file.\n`;
@@ -1056,34 +1343,45 @@ onmessage = (event) => {
 
         // Survey themes
         if ("surveyThemes" in importData) {
+            let action = config.surveyThemes;
+            let surveyThemes = importData.surveyThemes;
 
-            // Check if user selected update
-            if (surveyThemes == "update") {
-                postMessage(`[INFO] Checking survey themes...`);
+            if (surveyThemes.length > 0) {
+                surveyThemes.forEach(surveyTheme => {
 
-                let surveyThemes = importData.surveyThemes;
+                    // Get survey theme
+                    let surveyThemeFound = getSurveyThemeById(
+                        nccLocation,
+                        nccToken,
+                        surveyTheme._id
+                    );
 
-                if (surveyThemes.length > 0) {
-                    surveyThemes.forEach(surveyTheme => {
+                    // Check if survey theme found
+                    if (Object.keys(surveyThemeFound).length > 0) {
+                        postMessage(`[INFO] Survey theme "${surveyThemeFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tSurvey theme "${surveyThemeFound.name}" found, ID: "${surveyTheme._id}".\n`;
+                        }
+                    } else {
 
-                        // Get survey theme
-                        let surveyThemeFound = getSurveyThemeById(
+                        // Check if survey theme with same name already exists
+                        let surveyThemeFound = getSurveyThemeByName(
                             nccLocation,
                             nccToken,
-                            surveyTheme._id
+                            surveyTheme.name
                         );
 
-                        // Check if survey theme found
                         if (Object.keys(surveyThemeFound).length > 0) {
-                            updateMessage += `\tSurvey theme "${surveyThemeFound.name}"\n`;
-                            postMessage(`[INFO] Survey theme with ID "${surveyTheme._id}" found.`);
+                            updatedIds[surveyTheme._id] = surveyThemeFound._id;
+                            postMessage(`[INFO] Survey theme "${surveyThemeFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tSurvey theme "${surveyThemeFound.name}", ID: "${surveyThemeFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No survey themes found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Survey themes not selected for update.`);
+                postMessage(`[INFO] No survey themes found in import file.`);
             }
         } else {
             errorMessage += `\tNo "surveyThemes" property found in import file.\n`;
@@ -1092,34 +1390,45 @@ onmessage = (event) => {
 
         // Surveys
         if ("surveys" in importData) {
+            let action = config.surveys;
+            let surveys = importData.surveys;
 
-            // Check if user selected update
-            if (surveys == "update") {
-                postMessage(`[INFO] Checking surveys...`);
+            if (surveys.length > 0) {
+                surveys.forEach(survey => {
 
-                let surveys = importData.surveys;
+                    // Get survey
+                    let surveyFound = getSurveyById(
+                        nccLocation,
+                        nccToken,
+                        survey._id
+                    );
 
-                if (surveys.length > 0) {
-                    surveys.forEach(survey => {
+                    // Check if survey found
+                    if (Object.keys(surveyFound).length > 0) {
+                        postMessage(`[INFO] Survey "${surveyFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tSurvey "${surveyFound.name}" found, ID: "${survey._id}".\n`;
+                        }
+                    } else {
 
-                        // Get survey
-                        let surveyFound = getSurveyById(
+                        // Check if survey with same name already exists
+                        let surveyFound = getSurveyByName(
                             nccLocation,
                             nccToken,
-                            survey._id
+                            survey.name
                         );
 
-                        // Check if survey found
                         if (Object.keys(surveyFound).length > 0) {
-                            updateMessage += `\tSurvey "${surveyFound.name}"\n`;
-                            postMessage(`[INFO] Survey with ID "${survey._id}" found.`);
+                            updatedIds[survey._id] = surveyFound._id;
+                            postMessage(`[INFO] Survey "${surveyFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tSurvey "${surveyFound.name}", ID: "${surveyFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No surveys found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Surveys not selected for update.`);
+                postMessage(`[INFO] No surveys found in import file.`);
             }
         } else {
             errorMessage += `\tNo "surveys" property found in import file.\n`;
@@ -1128,34 +1437,45 @@ onmessage = (event) => {
 
         // Templates
         if ("templates" in importData) {
+            let action = config.templates;
+            let templates = importData.templates;
 
-            // Check if user selected update
-            if (templates == "update") {
-                postMessage(`[INFO] Checking templates...`);
+            if (templates.length > 0) {
+                templates.forEach(template => {
 
-                let templates = importData.templates;
+                    // Get template
+                    let templateFound = getTemplateById(
+                        nccLocation,
+                        nccToken,
+                        template._id
+                    );
 
-                if (templates.length > 0) {
-                    templates.forEach(template => {
+                    // Check if template found
+                    if (Object.keys(templateFound).length > 0) {
+                        postMessage(`[INFO] Template "${templateFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tTemplate "${templateFound.name}" found, ID: "${template._id}".\n`;
+                        }
+                    } else {
 
-                        // Get template
-                        let templateFound = getTemplateById(
+                        // Check if template with same name already exists
+                        let templateFound = getTemplateByName(
                             nccLocation,
                             nccToken,
-                            template._id
+                            template.name
                         );
 
-                        // Check if template found
                         if (Object.keys(templateFound).length > 0) {
-                            updateMessage += `\tTemplate "${templateFound.name}"\n`;
-                            postMessage(`[INFO] Template with ID "${template._id}" found.`);
+                            updatedIds[template._id] = templateFound._id;
+                            postMessage(`[INFO] Template "${templateFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tTemplate "${templateFound.name}", ID: "${templateFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No templates found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Templates not selected for update.`);
+                postMessage(`[INFO] No templates found in import file.`);
             }
         } else {
             errorMessage += `\tNo "templates" property found in import file.\n`;
@@ -1164,34 +1484,45 @@ onmessage = (event) => {
 
         // Time events
         if ("timeEvents" in importData) {
+            let action = config.timeEvents;
+            let timeEvents = importData.timeEvents;
 
-            // Check if user selected update
-            if (timeEvents == "update") {
-                postMessage(`[INFO] Checking time events...`);
+            if (timeEvents.length > 0) {
+                timeEvents.forEach(timeEvent => {
 
-                let timeEvents = importData.timeEvents;
+                    // Get time event
+                    let timeEventFound = getTimeEventById(
+                        nccLocation,
+                        nccToken,
+                        timeEvent._id
+                    );
 
-                if (timeEvents.length > 0) {
-                    timeEvents.forEach(timeEvent => {
+                    // Check if time event found
+                    if (Object.keys(timeEventFound).length > 0) {
+                        postMessage(`[INFO] Time event "${timeEventFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tTime event "${timeEventFound.name}" found, ID: "${timeEvent._id}".\n`;
+                        }
+                    } else {
 
-                        // Get time event
-                        let timeEventFound = getTimeEventById(
+                        // Check if time event with same name already exists
+                        let timeEventFound = getTimeEventByName(
                             nccLocation,
                             nccToken,
-                            timeEvent._id
+                            timeEvent.name
                         );
 
-                        // Check if time event found
                         if (Object.keys(timeEventFound).length > 0) {
-                            updateMessage += `\tTime event "${timeEventFound.name}"\n`;
-                            postMessage(`[INFO] Time event with ID "${timeEvent._id}" found.`);
+                            updatedIds[timeEvent._id] = timeEventFound._id;
+                            postMessage(`[INFO] Time event "${timeEventFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tTime event "${timeEventFound.name}", ID: "${timeEventFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No time events found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Time events not selected for update.`);
+                postMessage(`[INFO] No time events found in import file.`);
             }
         } else {
             errorMessage += `\tNo "timeEvents" property found in import file.\n`;
@@ -1200,34 +1531,45 @@ onmessage = (event) => {
 
         // User profiles
         if ("userProfiles" in importData) {
+            let action = config.userProfiles;
+            let userProfiles = importData.userProfiles;
 
-            // Check if user selected update
-            if (userProfiles == "update") {
-                postMessage(`[INFO] Checking User profiles...`);
+            if (userProfiles.length > 0) {
+                userProfiles.forEach(userProfile => {
 
-                let userProfiles = importData.userProfiles;
+                    // Get user profile
+                    let userProfileFound = getUserProfileById(
+                        nccLocation,
+                        nccToken,
+                        userProfile._id
+                    );
 
-                if (userProfiles.length > 0) {
-                    userProfiles.forEach(userProfile => {
+                    // Check if user profile found
+                    if (Object.keys(userProfileFound).length > 0) {
+                        postMessage(`[INFO] User profile "${userProfileFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tUser profile "${userProfileFound.name}" found, ID: "${userProfile._id}".\n`;
+                        }
+                    } else {
 
-                        // Get user profile
-                        let userProfileFound = getUserProfileById(
+                        // Check if user profile with same name already exists
+                        let userProfileFound = getUserProfileByName(
                             nccLocation,
                             nccToken,
-                            userProfile._id
+                            userProfile.name
                         );
 
-                        // Check if user profile found
                         if (Object.keys(userProfileFound).length > 0) {
-                            updateMessage += `\tUser profile "${userProfileFound.name}"\n`;
-                            postMessage(`[INFO] User profile with ID "${userProfile._id}" found.`);
+                            updatedIds[userProfile._id] = userProfileFound._id;
+                            postMessage(`[INFO] User profile "${userProfileFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tUser profile "${userProfileFound.name}", ID: "${userProfileFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No user profiles found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] User profiles not selected for update.`);
+                postMessage(`[INFO] No user profiles found in import file.`);
             }
         } else {
             errorMessage += `\tNo "userProfiles" property found in import file.\n`;
@@ -1236,34 +1578,45 @@ onmessage = (event) => {
 
         // WhatsApp templates
         if ("whatsAppTemplates" in importData) {
+            let action = config.whatsAppTemplates;
+            let whatsAppTemplates = importData.whatsAppTemplates;
 
-            // Check if user selected update
-            if (whatsAppTemplates == "update") {
-                postMessage(`[INFO] Checking WhatsApp templates...`);
+            if (whatsAppTemplates.length > 0) {
+                whatsAppTemplates.forEach(whatsAppTemplate => {
 
-                let whatsAppTemplates = importData.whatsAppTemplates;
+                    // Get WhatsApp template
+                    let whatsAppTemplateFound = getWhatsAppTemplateById(
+                        nccLocation,
+                        nccToken,
+                        whatsAppTemplate._id
+                    );
 
-                if (whatsAppTemplates.length > 0) {
-                    whatsAppTemplates.forEach(whatsAppTemplate => {
+                    // Check if WhatsApp template found
+                    if (Object.keys(whatsAppTemplateFound).length > 0) {
+                        postMessage(`[INFO] WhatsApp template "${whatsAppTemplateFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tWhatsApp template "${whatsAppTemplateFound.name}" found, ID: "${whatsAppTemplate._id}".\n`;
+                        }
+                    } else {
 
-                        // Get WhatsApp template
-                        let whatsAppTemplateFound = getWhatsAppTemplateById(
+                        // Check if WhatsApp template with same name already exists
+                        let whatsAppTemplateFound = getWhatsAppTemplateByName(
                             nccLocation,
                             nccToken,
-                            whatsAppTemplate._id
+                            whatsAppTemplate.name
                         );
 
-                        // Check if WhatsApp template found
                         if (Object.keys(whatsAppTemplateFound).length > 0) {
-                            updateMessage += `\tWhatsApp template "${whatsAppTemplateFound.name}"\n`;
-                            postMessage(`[INFO] WhatsApp template with ID "${whatsAppTemplate._id}" found.`);
+                            updatedIds[whatsAppTemplate._id] = whatsAppTemplateFound._id;
+                            postMessage(`[INFO] WhatsApp template "${whatsAppTemplateFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tWhatsApp template "${whatsAppTemplateFound.name}", ID: "${whatsAppTemplateFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No WhatsApp templates found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] WhatsApp templates not selected for update.`);
+                postMessage(`[INFO] No WhatsApp templates found in import file.`);
             }
         } else {
             errorMessage += `\tNo "whatsAppTemplates" property found in import file.\n`;
@@ -1272,34 +1625,45 @@ onmessage = (event) => {
 
         // Widgets
         if ("widgets" in importData) {
+            let action = config.widgets;
+            let widgets = importData.widgets;
 
-            // Check if user selected update
-            if (widgets == "update") {
-                postMessage(`[INFO] Checking widgets...`);
+            if (widgets.length > 0) {
+                widgets.forEach(widget => {
 
-                let widgets = importData.widgets;
+                    // Get widget
+                    let widgetFound = getWidgetById(
+                        nccLocation,
+                        nccToken,
+                        widget._id
+                    );
 
-                if (widgets.length > 0) {
-                    widgets.forEach(widget => {
+                    // Check if widget found
+                    if (Object.keys(widgetFound).length > 0) {
+                        postMessage(`[INFO] Widget "${widgetFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tWidget "${widgetFound.name}" found, ID: "${widget._id}".\n`;
+                        }
+                    } else {
 
-                        // Get widget
-                        let widgetFound = getWidgetById(
+                        // Check if widget with same name already exists
+                        let widgetFound = getWidgetByName(
                             nccLocation,
                             nccToken,
-                            widget._id
+                            widget.name
                         );
 
-                        // Check if widget found
                         if (Object.keys(widgetFound).length > 0) {
-                            updateMessage += `\tWidget "${widgetFound.name}"\n`;
-                            postMessage(`[INFO] Widget with ID "${widget._id}" found.`);
+                            updatedIds[widget._id] = widgetFound._id;
+                            postMessage(`[INFO] Widget "${widgetFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tWidget "${widgetFound.name}", ID: "${widgetFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No widgets found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Widgets not selected for update.`);
+                postMessage(`[INFO] No widgets found in import file.`);
             }
         } else {
             errorMessage += `\tNo "widgets" property found in import file.\n`;
@@ -1308,34 +1672,45 @@ onmessage = (event) => {
 
         // Workflows
         if ("workflows" in importData) {
+            let action = config.workflows;
+            let workflows = importData.workflows;
 
-            // Check if user selected update
-            if (workflows == "update") {
-                postMessage(`[INFO] Checking workflows...`);
+            if (workflows.length > 0) {
+                workflows.forEach(workflow => {
 
-                let workflows = importData.workflows;
+                    // Get workflow
+                    let workflowFound = getWorkflowById(
+                        nccLocation,
+                        nccToken,
+                        workflow._id
+                    );
 
-                if (workflows.length > 0) {
-                    workflows.forEach(workflow => {
+                    // Check if workflow found
+                    if (Object.keys(workflowFound).length > 0) {
+                        postMessage(`[INFO] Workflow "${workflowFound.name}" found.`);
+                        if (action == "update") {
+                            updateMessage += `\tWorkflow "${workflowFound.name}" found, ID: "${workflow._id}".\n`;
+                        }
+                    } else {
 
-                        // Get workflow
-                        let workflowFound = getWorkflowById(
+                        // Check if workflow with same name already exists
+                        let workflowFound = getWorkflowByName(
                             nccLocation,
                             nccToken,
-                            workflow._id
+                            workflow.name
                         );
 
-                        // Check if workflow found
                         if (Object.keys(workflowFound).length > 0) {
-                            updateMessage += `\tWorkflow "${workflowFound.name}"\n`;
-                            postMessage(`[INFO] Workflow with ID "${workflow._id}" found.`);
+                            updatedIds[workflow._id] = workflowFound._id;
+                            postMessage(`[INFO] Workflow "${workflowFound.name}" found, but with different ID.`);
+                            if (action == "update") {
+                                updateMessage += `\tWorkflow "${workflowFound.name}", ID: "${workflowFound._id}".\n`;
+                            }
                         }
-                    });
-                } else {
-                    postMessage(`[INFO] No workflows found in import file.`);
-                }
+                    }
+                });
             } else {
-                postMessage(`[INFO] Workflows not selected for update.`);
+                postMessage(`[INFO] No workflows found in import file.`);
             }
         } else {
             errorMessage += `\tNo "workflows" property found in import file.\n`;
@@ -1381,6 +1756,7 @@ onmessage = (event) => {
         postMessage({
             "action": "review",
             "status": "complete",
+            "updatedIds": JSON.stringify(updatedIds),
             "fileIsValid": fileIsValid
         });
     }
@@ -1424,7 +1800,7 @@ onmessage = (event) => {
 
                         // Check if business event found
                         if (Object.keys(businessEvent).length > 0) {
-                            postMessage(`[INFO] Business event with ID "${existingBusinessEvent._id}" already exists with name "${businessEvent.name}".`);
+                            postMessage(`[INFO] Business event "${existingBusinessEvent._id}" already exists "${businessEvent.name}".`);
                         } else {
 
                             // Check if business event with same name already exists
@@ -1435,8 +1811,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(businessEvent).length > 0) {
-                                warningMessage += `\tBusiness event with name "${existingBusinessEvent.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Business event with name "${existingBusinessEvent.name}" exists, but with different ID.`);
+                                warningMessage += `\tBusiness event "${existingBusinessEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Business event "${existingBusinessEvent.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create business event
@@ -1493,8 +1869,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(businessEvent).length > 0) {
-                                warningMessage += `\tBusiness event with name "${existingBusinessEvent.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Business event with name "${existingBusinessEvent.name}" exists, but with different ID.`);
+                                warningMessage += `\tBusiness event "${existingBusinessEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Business event "${existingBusinessEvent.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create business event
@@ -1544,7 +1920,7 @@ onmessage = (event) => {
 
                         // Check if campaign goal found
                         if (Object.keys(campaignGoal).length > 0) {
-                            postMessage(`[INFO] Campaign goal with ID "${existingCampaignGoal._id}" already exists with name "${campaignGoal.name}".`);
+                            postMessage(`[INFO] Campaign goal "${existingCampaignGoal._id}" already exists "${campaignGoal.name}".`);
                         } else {
 
                             // Check if campaign goal with same name already exists
@@ -1555,8 +1931,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaignGoal).length > 0) {
-                                warningMessage += `\tCampaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Campaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.`);
+                                warningMessage += `\tCampaign goal "${existingCampaignGoal.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign goal "${existingCampaignGoal.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign goal
@@ -1613,8 +1989,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaignGoal).length > 0) {
-                                warningMessage += `\tCampaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Campaign goal with name "${existingCampaignGoal.name}" exists, but with different ID.`);
+                                warningMessage += `\tCampaign goal "${existingCampaignGoal.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign goal "${existingCampaignGoal.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign goal
@@ -1664,7 +2040,7 @@ onmessage = (event) => {
 
                         // Check if campaign script found
                         if (Object.keys(campaignScript).length > 0) {
-                            postMessage(`[INFO] Campaign script with ID "${existingCampaignScript._id}" already exists with name "${campaignScript.name}".`);
+                            postMessage(`[INFO] Campaign script "${existingCampaignScript._id}" already exists "${campaignScript.name}".`);
                         } else {
 
                             // Check if campaign script with same name already exists
@@ -1675,8 +2051,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaignScript).length > 0) {
-                                warningMessage += `\tCampaign script with name "${existingCampaignScript.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Campaign script with name "${existingCampaignScript.name}" exists, but with different ID.`);
+                                warningMessage += `\tCampaign script "${existingCampaignScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign script "${existingCampaignScript.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign script
@@ -1733,8 +2109,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaignScript).length > 0) {
-                                warningMessage += `\tCampaign script with name "${existingCampaignScript.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Campaign script with name "${existingCampaignScript.name}" exists, but with different ID.`);
+                                warningMessage += `\tCampaign script "${existingCampaignScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign script "${existingCampaignScript.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign script
@@ -1784,7 +2160,7 @@ onmessage = (event) => {
 
                         // Check if campaign found
                         if (Object.keys(campaign).length > 0) {
-                            postMessage(`[INFO] Campaign with ID "${existingCampaign._id}" already exists with name "${campaign.name}".`);
+                            postMessage(`[INFO] Campaign "${existingCampaign._id}" already exists "${campaign.name}".`);
                         } else {
 
                             // Check if campaign with same name already exists
@@ -1795,8 +2171,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaign).length > 0) {
-                                warningMessage += `\tCampaign with name "${existingCampaign.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Campaign with name "${existingCampaign.name}" exists, but with different ID.`);
+                                warningMessage += `\tCampaign "${existingCampaign.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign "${existingCampaign.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign
@@ -1853,8 +2229,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(campaign).length > 0) {
-                                warningMessage += `\tCampaign with name "${existingCampaign.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Campaign with name "${existingCampaign.name}" exists, but with different ID.`);
+                                warningMessage += `\tCampaign "${existingCampaign.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Campaign "${existingCampaign.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create campaign
@@ -1904,7 +2280,7 @@ onmessage = (event) => {
 
                         // Check if category found
                         if (Object.keys(category).length > 0) {
-                            postMessage(`[INFO] Category with ID "${existingCategory._id}" already exists with name "${category.name}".`);
+                            postMessage(`[INFO] Category "${existingCategory._id}" already exists "${category.name}".`);
                         } else {
 
                             // Check if category with same name already exists
@@ -1915,8 +2291,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(category).length > 0) {
-                                warningMessage += `\tCategory with name "${existingCategory.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Category with name "${existingCategory.name}" exists, but with different ID.`);
+                                warningMessage += `\tCategory "${existingCategory.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category "${existingCategory.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create category
@@ -1973,8 +2349,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(category).length > 0) {
-                                warningMessage += `\tCategory with name "${existingCategory.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Category with name "${existingCategory.name}" exists, but with different ID.`);
+                                warningMessage += `\tCategory "${existingCategory.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category "${existingCategory.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create category
@@ -2024,7 +2400,7 @@ onmessage = (event) => {
 
                         // Check if category summary found
                         if (Object.keys(categorySummary).length > 0) {
-                            postMessage(`[INFO] Category summary with ID "${existingCategorySummary._id}" already exists with name "${categorySummary.name}".`);
+                            postMessage(`[INFO] Category summary "${existingCategorySummary._id}" already exists "${categorySummary.name}".`);
                         } else {
 
                             // Check if category summary with same name already exists
@@ -2035,8 +2411,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(categorySummary).length > 0) {
-                                warningMessage += `\tCategory summary with name "${existingCategorySummary.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Category summary with name "${existingCategorySummary.name}" exists, but with different ID.`);
+                                warningMessage += `\tCategory summary "${existingCategorySummary.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category summary "${existingCategorySummary.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create category summary
@@ -2093,8 +2469,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(categorySummary).length > 0) {
-                                warningMessage += `\tCategory summary with name "${existingCategorySummary.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Category summary with name "${existingCategorySummary.name}" exists, but with different ID.`);
+                                warningMessage += `\tCategory summary "${existingCategorySummary.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Category summary "${existingCategorySummary.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create category summary
@@ -2144,7 +2520,7 @@ onmessage = (event) => {
 
                         // Check if classification found
                         if (Object.keys(classification).length > 0) {
-                            postMessage(`[INFO] Classification with ID "${existingClassification._id}" already exists with name "${classification.name}".`);
+                            postMessage(`[INFO] Classification "${existingClassification._id}" already exists "${classification.name}".`);
                         } else {
 
                             // Check if classification with same name already exists
@@ -2155,8 +2531,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(classification).length > 0) {
-                                warningMessage += `\tClassification with name "${existingClassification.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Classification with name "${existingClassification.name}" exists, but with different ID.`);
+                                warningMessage += `\tClassification "${existingClassification.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Classification "${existingClassification.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create classification
@@ -2213,8 +2589,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(classification).length > 0) {
-                                warningMessage += `\tClassification with name "${existingClassification.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Classification with name "${existingClassification.name}" exists, but with different ID.`);
+                                warningMessage += `\tClassification "${existingClassification.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Classification "${existingClassification.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create classification
@@ -2264,7 +2640,7 @@ onmessage = (event) => {
 
                         // Check if dashboard found
                         if (Object.keys(dashboard).length > 0) {
-                            postMessage(`[INFO] Dashboard with ID "${existingDashboard._id}" already exists with name "${dashboard.name}".`);
+                            postMessage(`[INFO] Dashboard "${existingDashboard._id}" already exists "${dashboard.name}".`);
                         } else {
 
                             // Check if dashboard with same name already exists
@@ -2275,8 +2651,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(dashboard).length > 0) {
-                                warningMessage += `\tDashboard with name "${existingDashboard.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Dashboard with name "${existingDashboard.name}" exists, but with different ID.`);
+                                warningMessage += `\tDashboard "${existingDashboard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dashboard "${existingDashboard.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create dashboard
@@ -2333,8 +2709,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(dashboard).length > 0) {
-                                warningMessage += `\tDashboard with name "${existingDashboard.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Dashboard with name "${existingDashboard.name}" exists, but with different ID.`);
+                                warningMessage += `\tDashboard "${existingDashboard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dashboard "${existingDashboard.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create dashboard
@@ -2384,7 +2760,7 @@ onmessage = (event) => {
 
                         // Check if dial plan found
                         if (Object.keys(dialPlan).length > 0) {
-                            postMessage(`[INFO] Dial plan with ID "${existingDialPlan._id}" already exists with name "${dialPlan.name}".`);
+                            postMessage(`[INFO] Dial plan "${existingDialPlan._id}" already exists "${dialPlan.name}".`);
                         } else {
 
                             // Check if dial plan with same name already exists
@@ -2395,8 +2771,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(dialPlan).length > 0) {
-                                warningMessage += `\tDial plan with name "${existingDialPlan.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Dial plan with name "${existingDialPlan.name}" exists, but with different ID.`);
+                                warningMessage += `\tDial plan "${existingDialPlan.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dial plan "${existingDialPlan.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create dial plan
@@ -2453,8 +2829,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(dialPlan).length > 0) {
-                                warningMessage += `\tDial plan with name "${existingDialPlan.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Dial plan with name "${existingDialPlan.name}" exists, but with different ID.`);
+                                warningMessage += `\tDial plan "${existingDialPlan.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Dial plan "${existingDialPlan.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create dial plan
@@ -2504,7 +2880,7 @@ onmessage = (event) => {
 
                         // Check if disposition found
                         if (Object.keys(disposition).length > 0) {
-                            postMessage(`[INFO] Disposition with ID "${existingDisposition._id}" already exists with name "${disposition.name}".`);
+                            postMessage(`[INFO] Disposition "${existingDisposition._id}" already exists "${disposition.name}".`);
                         } else {
 
                             // Check if disposition with same name already exists
@@ -2515,8 +2891,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(disposition).length > 0) {
-                                warningMessage += `\tDisposition with name "${existingDisposition.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Disposition with name "${existingDisposition.name}" exists, but with different ID.`);
+                                warningMessage += `\tDisposition "${existingDisposition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Disposition "${existingDisposition.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create disposition
@@ -2573,8 +2949,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(disposition).length > 0) {
-                                warningMessage += `\tDisposition with name "${existingDisposition.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Disposition with name "${existingDisposition.name}" exists, but with different ID.`);
+                                warningMessage += `\tDisposition "${existingDisposition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Disposition "${existingDisposition.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create disposition
@@ -2624,7 +3000,7 @@ onmessage = (event) => {
 
                         // Check if entity found
                         if (Object.keys(entity).length > 0) {
-                            postMessage(`[INFO] Entity with ID "${existingEntity._id}" already exists with name "${entity.name}".`);
+                            postMessage(`[INFO] Entity "${existingEntity._id}" already exists "${entity.name}".`);
                         } else {
 
                             // Check if entity with same name already exists
@@ -2635,8 +3011,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(entity).length > 0) {
-                                warningMessage += `\tEntity with name "${existingEntity.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Entity with name "${existingEntity.name}" exists, but with different ID.`);
+                                warningMessage += `\tEntity "${existingEntity.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Entity "${existingEntity.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create entity
@@ -2693,8 +3069,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(entity).length > 0) {
-                                warningMessage += `\tEntity with name "${existingEntity.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Entity with name "${existingEntity.name}" exists, but with different ID.`);
+                                warningMessage += `\tEntity "${existingEntity.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Entity "${existingEntity.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create entity
@@ -2744,7 +3120,7 @@ onmessage = (event) => {
 
                         // Check if field mapping found
                         if (Object.keys(fieldMapping).length > 0) {
-                            postMessage(`[INFO] Field mapping with ID "${existingFieldMapping._id}" already exists with name "${fieldMapping.name}".`);
+                            postMessage(`[INFO] Field mapping "${existingFieldMapping._id}" already exists "${fieldMapping.name}".`);
                         } else {
 
                             // Check if field mapping with same name already exists
@@ -2755,8 +3131,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(fieldMapping).length > 0) {
-                                warningMessage += `\tField mapping with name "${existingFieldMapping.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Field mapping with name "${existingFieldMapping.name}" exists, but with different ID.`);
+                                warningMessage += `\tField mapping "${existingFieldMapping.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Field mapping "${existingFieldMapping.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create field mapping
@@ -2813,8 +3189,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(fieldMapping).length > 0) {
-                                warningMessage += `\tField mapping with name "${existingFieldMapping.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Field mapping with name "${existingFieldMapping.name}" exists, but with different ID.`);
+                                warningMessage += `\tField mapping "${existingFieldMapping.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Field mapping "${existingFieldMapping.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create field mapping
@@ -2864,7 +3240,7 @@ onmessage = (event) => {
 
                         // Check if file server found
                         if (Object.keys(fileServer).length > 0) {
-                            postMessage(`[INFO] File server with ID "${existingFileServer._id}" already exists with name "${fileServer.name}".`);
+                            postMessage(`[INFO] File server "${existingFileServer._id}" already exists "${fileServer.name}".`);
                         } else {
 
                             // Check if file server with same name already exists
@@ -2875,8 +3251,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(fileServer).length > 0) {
-                                warningMessage += `\tFile server with name "${existingFileServer.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] File server with name "${existingFileServer.name}" exists, but with different ID.`);
+                                warningMessage += `\tFile server "${existingFileServer.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] File server "${existingFileServer.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create file server
@@ -2933,8 +3309,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(fileServer).length > 0) {
-                                warningMessage += `\tFile server with name "${existingFileServer.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] File server with name "${existingFileServer.name}" exists, but with different ID.`);
+                                warningMessage += `\tFile server "${existingFileServer.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] File server "${existingFileServer.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create file server
@@ -2984,7 +3360,7 @@ onmessage = (event) => {
 
                         // Check if filter found
                         if (Object.keys(filter).length > 0) {
-                            postMessage(`[INFO] Filter with ID "${existingFilter._id}" already exists with name "${filter.name}".`);
+                            postMessage(`[INFO] Filter "${existingFilter._id}" already exists "${filter.name}".`);
                         } else {
 
                             // Check if filter with same name already exists
@@ -2995,8 +3371,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(filter).length > 0) {
-                                warningMessage += `\tFilter with name "${existingFilter.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Filter with name "${existingFilter.name}" exists, but with different ID.`);
+                                warningMessage += `\tFilter "${existingFilter.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Filter "${existingFilter.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create filter
@@ -3053,8 +3429,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(filter).length > 0) {
-                                warningMessage += `\tFilter with name "${existingFilter.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Filter with name "${existingFilter.name}" exists, but with different ID.`);
+                                warningMessage += `\tFilter "${existingFilter.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Filter "${existingFilter.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create filter
@@ -3104,7 +3480,7 @@ onmessage = (event) => {
 
                         // Check if function found
                         if (Object.keys(nccFunction).length > 0) {
-                            postMessage(`[INFO] Function with ID "${existingFunction._id}" already exists with name "${nccFunction.name}".`);
+                            postMessage(`[INFO] Function "${existingFunction._id}" already exists "${nccFunction.name}".`);
                         } else {
 
                             // Check if function with same name already exists
@@ -3115,8 +3491,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(nccFunction).length > 0) {
-                                warningMessage += `\tFunction with name "${existingFunction.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Function with name "${existingFunction.name}" exists, but with different ID.`);
+                                warningMessage += `\tFunction "${existingFunction.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Function "${existingFunction.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create function
@@ -3173,8 +3549,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(nccFunction).length > 0) {
-                                warningMessage += `\tFunction with name "${existingFunction.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Function with name "${existingFunction.name}" exists, but with different ID.`);
+                                warningMessage += `\tFunction "${existingFunction.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Function "${existingFunction.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create function
@@ -3224,7 +3600,7 @@ onmessage = (event) => {
 
                         // Check if home tab found
                         if (Object.keys(homeTab).length > 0) {
-                            postMessage(`[INFO] Home tab with ID "${existingHomeTab._id}" already exists with name "${homeTab.name}".`);
+                            postMessage(`[INFO] Home tab "${existingHomeTab._id}" already exists "${homeTab.name}".`);
                         } else {
 
                             // Check if home tab with same name already exists
@@ -3235,8 +3611,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(homeTab).length > 0) {
-                                warningMessage += `\tHome tab with name "${existingHomeTab.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Home tab with name "${existingHomeTab.name}" exists, but with different ID.`);
+                                warningMessage += `\tHome tab "${existingHomeTab.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Home tab "${existingHomeTab.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create home tab
@@ -3293,8 +3669,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(homeTab).length > 0) {
-                                warningMessage += `\tHome tab with name "${existingHomeTab.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Home tab with name "${existingHomeTab.name}" exists, but with different ID.`);
+                                warningMessage += `\tHome tab "${existingHomeTab.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Home tab "${existingHomeTab.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create home tab
@@ -3344,7 +3720,7 @@ onmessage = (event) => {
 
                         // Check if music found
                         if (Object.keys(music).length > 0) {
-                            postMessage(`[INFO] Music with ID "${existingMusic._id}" already exists with name "${music.name}".`);
+                            postMessage(`[INFO] Music "${existingMusic._id}" already exists "${music.name}".`);
                         } else {
 
                             // Check if music with same name already exists
@@ -3355,8 +3731,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(music).length > 0) {
-                                warningMessage += `\tMusic with name "${existingMusic.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Music with name "${existingMusic.name}" exists, but with different ID.`);
+                                warningMessage += `\tMusic "${existingMusic.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Music "${existingMusic.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create music
@@ -3413,8 +3789,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(music).length > 0) {
-                                warningMessage += `\tMusic with name "${existingMusic.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Music with name "${existingMusic.name}" exists, but with different ID.`);
+                                warningMessage += `\tMusic "${existingMusic.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Music "${existingMusic.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create music
@@ -3464,7 +3840,7 @@ onmessage = (event) => {
 
                         // Check if partition found
                         if (Object.keys(partition).length > 0) {
-                            postMessage(`[INFO] Partition with ID "${existingPartition._id}" already exists with name "${partition.name}".`);
+                            postMessage(`[INFO] Partition "${existingPartition._id}" already exists "${partition.name}".`);
                         } else {
 
                             // Check if partition with same name already exists
@@ -3475,8 +3851,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(partition).length > 0) {
-                                warningMessage += `\tPartition with name "${existingPartition.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Partition with name "${existingPartition.name}" exists, but with different ID.`);
+                                warningMessage += `\tPartition "${existingPartition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Partition "${existingPartition.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create partition
@@ -3533,8 +3909,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(partition).length > 0) {
-                                warningMessage += `\tPartition with name "${existingPartition.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Partition with name "${existingPartition.name}" exists, but with different ID.`);
+                                warningMessage += `\tPartition "${existingPartition.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Partition "${existingPartition.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create partition
@@ -3584,7 +3960,7 @@ onmessage = (event) => {
 
                         // Check if prompt found
                         if (Object.keys(prompt).length > 0) {
-                            postMessage(`[INFO] Prompt with ID "${existingPrompt._id}" already exists with name "${prompt.name}".`);
+                            postMessage(`[INFO] Prompt "${existingPrompt._id}" already exists "${prompt.name}".`);
                         } else {
 
                             // Check if prompt with same name already exists
@@ -3595,8 +3971,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(prompt).length > 0) {
-                                warningMessage += `\tPrompt with name "${existingPrompt.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Prompt with name "${existingPrompt.name}" exists, but with different ID.`);
+                                warningMessage += `\tPrompt "${existingPrompt.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Prompt "${existingPrompt.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create prompt
@@ -3653,8 +4029,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(prompt).length > 0) {
-                                warningMessage += `\tPrompt with name "${existingPrompt.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Prompt with name "${existingPrompt.name}" exists, but with different ID.`);
+                                warningMessage += `\tPrompt "${existingPrompt.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Prompt "${existingPrompt.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create prompt
@@ -3704,7 +4080,7 @@ onmessage = (event) => {
 
                         // Check if queue found
                         if (Object.keys(queue).length > 0) {
-                            postMessage(`[INFO] Queue with ID "${existingQueue._id}" already exists with name "${queue.name}".`);
+                            postMessage(`[INFO] Queue "${existingQueue._id}" already exists "${queue.name}".`);
                         } else {
 
                             // Check if queue with same name already exists
@@ -3715,8 +4091,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(queue).length > 0) {
-                                warningMessage += `\tQueue with name "${existingQueue.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Queue with name "${existingQueue.name}" exists, but with different ID.`);
+                                warningMessage += `\tQueue "${existingQueue.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Queue "${existingQueue.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create queue
@@ -3824,7 +4200,7 @@ onmessage = (event) => {
 
                         // Check if report found
                         if (Object.keys(report).length > 0) {
-                            postMessage(`[INFO] Report with ID "${existingReport._id}" already exists with name "${report.name}".`);
+                            postMessage(`[INFO] Report "${existingReport._id}" already exists "${report.name}".`);
                         } else {
 
                             // Check if report with same name already exists
@@ -3835,8 +4211,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(report).length > 0) {
-                                warningMessage += `\tReport with name "${existingReport.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Report with name "${existingReport.name}" exists, but with different ID.`);
+                                warningMessage += `\tReport "${existingReport.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Report "${existingReport.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create report
@@ -3893,8 +4269,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(report).length > 0) {
-                                warningMessage += `\tReport with name "${existingReport.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Report with name "${existingReport.name}" exists, but with different ID.`);
+                                warningMessage += `\tReport "${existingReport.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Report "${existingReport.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create report
@@ -3944,7 +4320,7 @@ onmessage = (event) => {
 
                         // Check if REST call found
                         if (Object.keys(restCall).length > 0) {
-                            postMessage(`[INFO] REST call with ID "${existingRestCall._id}" already exists with name "${restCall.name}".`);
+                            postMessage(`[INFO] REST call "${existingRestCall._id}" already exists "${restCall.name}".`);
                         } else {
 
                             // Check if REST call with same name already exists
@@ -3955,8 +4331,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(restCall).length > 0) {
-                                warningMessage += `\tREST call with name "${existingRestCall.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] REST call with name "${existingRestCall.name}" exists, but with different ID.`);
+                                warningMessage += `\tREST call "${existingRestCall.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] REST call "${existingRestCall.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create REST call
@@ -4013,8 +4389,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(restCall).length > 0) {
-                                warningMessage += `\tREST call with name "${existingRestCall.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] REST call with name "${existingRestCall.name}" exists, but with different ID.`);
+                                warningMessage += `\tREST call "${existingRestCall.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] REST call "${existingRestCall.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create REST call
@@ -4064,7 +4440,7 @@ onmessage = (event) => {
 
                         // Check if scorecard found
                         if (Object.keys(scorecard).length > 0) {
-                            postMessage(`[INFO] Scorecard with ID "${existingScorecard._id}" already exists with name "${scorecard.name}".`);
+                            postMessage(`[INFO] Scorecard "${existingScorecard._id}" already exists "${scorecard.name}".`);
                         } else {
 
                             // Check if scorecard with same name already exists
@@ -4075,8 +4451,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(scorecard).length > 0) {
-                                warningMessage += `\tScorecard with name "${existingScorecard.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Scorecard with name "${existingScorecard.name}" exists, but with different ID.`);
+                                warningMessage += `\tScorecard "${existingScorecard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Scorecard "${existingScorecard.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create scorecard
@@ -4133,8 +4509,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(scorecard).length > 0) {
-                                warningMessage += `\tScorecard with name "${existingScorecard.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Scorecard with name "${existingScorecard.name}" exists, but with different ID.`);
+                                warningMessage += `\tScorecard "${existingScorecard.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Scorecard "${existingScorecard.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create scorecard
@@ -4184,7 +4560,7 @@ onmessage = (event) => {
 
                         // Check if script found
                         if (Object.keys(script).length > 0) {
-                            postMessage(`[INFO] Script with ID "${existingScript._id}" already exists with name "${script.name}".`);
+                            postMessage(`[INFO] Script "${existingScript._id}" already exists "${script.name}".`);
                         } else {
 
                             // Check if script with same name already exists
@@ -4195,8 +4571,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(script).length > 0) {
-                                warningMessage += `\tScript with name "${existingScript.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Script with name "${existingScript.name}" exists, but with different ID.`);
+                                warningMessage += `\tScript "${existingScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Script "${existingScript.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create script
@@ -4253,8 +4629,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(script).length > 0) {
-                                warningMessage += `\tScript with name "${existingScript.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Script with name "${existingScript.name}" exists, but with different ID.`);
+                                warningMessage += `\tScript "${existingScript.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Script "${existingScript.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create script
@@ -4304,7 +4680,7 @@ onmessage = (event) => {
 
                         // Check if skill found
                         if (Object.keys(skill).length > 0) {
-                            postMessage(`[INFO] Skill with ID "${existingSkill._id}" already exists with name "${skill.name}".`);
+                            postMessage(`[INFO] Skill "${existingSkill._id}" already exists "${skill.name}".`);
                         } else {
 
                             // Check if skill with same name already exists
@@ -4315,8 +4691,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(skill).length > 0) {
-                                warningMessage += `\tSkill with name "${existingSkill.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Skill with name "${existingSkill.name}" exists, but with different ID.`);
+                                warningMessage += `\tSkill "${existingSkill.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Skill "${existingSkill.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create skill
@@ -4373,8 +4749,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(skill).length > 0) {
-                                warningMessage += `\tSkill with name "${existingSkill.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Skill with name "${existingSkill.name}" exists, but with different ID.`);
+                                warningMessage += `\tSkill "${existingSkill.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Skill "${existingSkill.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create skill
@@ -4424,7 +4800,7 @@ onmessage = (event) => {
 
                         // Check if state DID found
                         if (Object.keys(stateDid).length > 0) {
-                            postMessage(`[INFO] State DID with ID "${existingStateDid._id}" already exists with name "${stateDid.name}".`);
+                            postMessage(`[INFO] State DID "${existingStateDid._id}" already exists "${stateDid.name}".`);
                         } else {
 
                             // Check if state DID with same name already exists
@@ -4435,8 +4811,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(stateDid).length > 0) {
-                                warningMessage += `\tState DID with name "${existingStateDid.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] State DID with name "${existingStateDid.name}" exists, but with different ID.`);
+                                warningMessage += `\tState DID "${existingStateDid.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] State DID "${existingStateDid.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create state DID
@@ -4493,8 +4869,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(stateDid).length > 0) {
-                                warningMessage += `\tState DID with name "${existingStateDid.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] State DID with name "${existingStateDid.name}" exists, but with different ID.`);
+                                warningMessage += `\tState DID "${existingStateDid.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] State DID "${existingStateDid.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create state DID
@@ -4544,7 +4920,7 @@ onmessage = (event) => {
 
                         // Check if survey theme found
                         if (Object.keys(surveyTheme).length > 0) {
-                            postMessage(`[INFO] Survey theme with ID "${existingSurveyTheme._id}" already exists with name "${surveyTheme.name}".`);
+                            postMessage(`[INFO] Survey theme "${existingSurveyTheme._id}" already exists "${surveyTheme.name}".`);
                         } else {
 
                             // Check if survey theme with same name already exists
@@ -4555,8 +4931,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(surveyTheme).length > 0) {
-                                warningMessage += `\tSurvey theme with name "${existingSurveyTheme.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Survey theme with name "${existingSurveyTheme.name}" exists, but with different ID.`);
+                                warningMessage += `\tSurvey theme "${existingSurveyTheme.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey theme "${existingSurveyTheme.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create survey theme
@@ -4613,8 +4989,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(surveyTheme).length > 0) {
-                                warningMessage += `\tSurvey theme with name "${existingSurveyTheme.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Survey theme with name "${existingSurveyTheme.name}" exists, but with different ID.`);
+                                warningMessage += `\tSurvey theme "${existingSurveyTheme.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey theme "${existingSurveyTheme.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create survey theme
@@ -4664,7 +5040,7 @@ onmessage = (event) => {
 
                         // Check if survey found
                         if (Object.keys(survey).length > 0) {
-                            postMessage(`[INFO] Survey with ID "${existingSurvey._id}" already exists with name "${survey.name}".`);
+                            postMessage(`[INFO] Survey "${existingSurvey._id}" already exists "${survey.name}".`);
                         } else {
 
                             // Check if survey with same name already exists
@@ -4675,8 +5051,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(survey).length > 0) {
-                                warningMessage += `\tSurvey with name "${existingSurvey.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Survey with name "${existingSurvey.name}" exists, but with different ID.`);
+                                warningMessage += `\tSurvey "${existingSurvey.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey "${existingSurvey.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create survey
@@ -4733,8 +5109,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(survey).length > 0) {
-                                warningMessage += `\tSurvey with name "${existingSurvey.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Survey with name "${existingSurvey.name}" exists, but with different ID.`);
+                                warningMessage += `\tSurvey "${existingSurvey.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Survey "${existingSurvey.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create survey
@@ -4784,7 +5160,7 @@ onmessage = (event) => {
 
                         // Check if template found
                         if (Object.keys(template).length > 0) {
-                            postMessage(`[INFO] Template with ID "${existingTemplate._id}" already exists with name "${template.name}".`);
+                            postMessage(`[INFO] Template "${existingTemplate._id}" already exists "${template.name}".`);
                         } else {
 
                             // Check if template with same name already exists
@@ -4795,8 +5171,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(template).length > 0) {
-                                warningMessage += `\tTemplate with name "${existingTemplate.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Template with name "${existingTemplate.name}" exists, but with different ID.`);
+                                warningMessage += `\tTemplate "${existingTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Template "${existingTemplate.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create template
@@ -4853,8 +5229,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(template).length > 0) {
-                                warningMessage += `\tTemplate with name "${existingTemplate.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Template with name "${existingTemplate.name}" exists, but with different ID.`);
+                                warningMessage += `\tTemplate "${existingTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Template "${existingTemplate.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create template
@@ -4904,7 +5280,7 @@ onmessage = (event) => {
 
                         // Check if time event found
                         if (Object.keys(timeEvent).length > 0) {
-                            postMessage(`[INFO] Time event with ID "${existingTimeEvent._id}" already exists with name "${timeEvent.name}".`);
+                            postMessage(`[INFO] Time event "${existingTimeEvent._id}" already exists "${timeEvent.name}".`);
                         } else {
 
                             // Check if time event with same name already exists
@@ -4915,8 +5291,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(timeEvent).length > 0) {
-                                warningMessage += `\tTime event with name "${existingTimeEvent.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Time event with name "${existingTimeEvent.name}" exists, but with different ID.`);
+                                warningMessage += `\tTime event "${existingTimeEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Time event "${existingTimeEvent.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create time event
@@ -4973,8 +5349,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(timeEvent).length > 0) {
-                                warningMessage += `\tTime event with name "${existingTimeEvent.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Time event with name "${existingTimeEvent.name}" exists, but with different ID.`);
+                                warningMessage += `\tTime event "${existingTimeEvent.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Time event "${existingTimeEvent.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create time event
@@ -5024,7 +5400,7 @@ onmessage = (event) => {
 
                         // Check if user profile found
                         if (Object.keys(userProfile).length > 0) {
-                            postMessage(`[INFO] User profile with ID "${existingUserProfile._id}" already exists with name "${userProfile.name}".`);
+                            postMessage(`[INFO] User profile "${existingUserProfile._id}" already exists "${userProfile.name}".`);
                         } else {
 
                             // Check if user profile with same name already exists
@@ -5035,8 +5411,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(userProfile).length > 0) {
-                                warningMessage += `\tUser profile with name "${existingUserProfile.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] User profile with name "${existingUserProfile.name}" exists, but with different ID.`);
+                                warningMessage += `\tUser profile "${existingUserProfile.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] User profile "${existingUserProfile.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create user profile
@@ -5093,8 +5469,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(userProfile).length > 0) {
-                                warningMessage += `\tUser profile with name "${existingUserProfile.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] User profile with name "${existingUserProfile.name}" exists, but with different ID.`);
+                                warningMessage += `\tUser profile "${existingUserProfile.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] User profile "${existingUserProfile.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create user profile
@@ -5144,7 +5520,7 @@ onmessage = (event) => {
 
                         // Check if WhatsApp template found
                         if (Object.keys(whatsAppTemplate).length > 0) {
-                            postMessage(`[INFO] WhatsApp template with ID "${existingWhatsAppTemplate._id}" already exists with name "${whatsAppTemplate.name}".`);
+                            postMessage(`[INFO] WhatsApp template "${existingWhatsAppTemplate._id}" already exists "${whatsAppTemplate.name}".`);
                         } else {
 
                             // Check if WhatsApp template with same name already exists
@@ -5155,8 +5531,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(whatsAppTemplate).length > 0) {
-                                warningMessage += `\tWhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] WhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.`);
+                                warningMessage += `\tWhatsApp template "${existingWhatsAppTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] WhatsApp template "${existingWhatsAppTemplate.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create WhatsApp template
@@ -5213,8 +5589,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(whatsAppTemplate).length > 0) {
-                                warningMessage += `\tWhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] WhatsApp template with name "${existingWhatsAppTemplate.name}" exists, but with different ID.`);
+                                warningMessage += `\tWhatsApp template "${existingWhatsAppTemplate.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] WhatsApp template "${existingWhatsAppTemplate.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create WhatsApp template
@@ -5264,7 +5640,7 @@ onmessage = (event) => {
 
                         // Check if widget found
                         if (Object.keys(widget).length > 0) {
-                            postMessage(`[INFO] Widget with ID "${existingWidget._id}" already exists with name "${widget.name}".`);
+                            postMessage(`[INFO] Widget "${existingWidget._id}" already exists "${widget.name}".`);
                         } else {
 
                             // Check if widget with same name already exists
@@ -5275,8 +5651,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(widget).length > 0) {
-                                warningMessage += `\tWidget with name "${existingWidget.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Widget with name "${existingWidget.name}" exists, but with different ID.`);
+                                warningMessage += `\tWidget "${existingWidget.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Widget "${existingWidget.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create widget
@@ -5333,8 +5709,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(widget).length > 0) {
-                                warningMessage += `\tWidget with name "${existingWidget.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Widget with name "${existingWidget.name}" exists, but with different ID.`);
+                                warningMessage += `\tWidget "${existingWidget.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Widget "${existingWidget.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create widget
@@ -5384,7 +5760,7 @@ onmessage = (event) => {
 
                         // Check if workflow found
                         if (Object.keys(workflow).length > 0) {
-                            postMessage(`[INFO] Workflow with ID "${existingWorkflow._id}" already exists with name "${workflow.name}".`);
+                            postMessage(`[INFO] Workflow "${existingWorkflow._id}" already exists "${workflow.name}".`);
                         } else {
 
                             // Check if workflow with same name already exists
@@ -5395,8 +5771,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(workflow).length > 0) {
-                                warningMessage += `\tWorkflow with name "${existingWorkflow.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Workflow with name "${existingWorkflow.name}" exists, but with different ID.`);
+                                warningMessage += `\tWorkflow "${existingWorkflow.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Workflow "${existingWorkflow.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create workflow
@@ -5453,8 +5829,8 @@ onmessage = (event) => {
                             );
 
                             if (Object.keys(workflow).length > 0) {
-                                warningMessage += `\tWorkflow with name "${existingWorkflow.name}" exists, but with different ID.\n`;
-                                postMessage(`[WARNING] Workflow with name "${existingWorkflow.name}" exists, but with different ID.`);
+                                warningMessage += `\tWorkflow "${existingWorkflow.name}" exists, but with different ID.\n`;
+                                postMessage(`[WARNING] Workflow "${existingWorkflow.name}" exists, but with different ID.`);
                             } else {
 
                                 // Create workflow

@@ -222,6 +222,8 @@ var KTImportCampaign = function () {
 														&& data.fileIsValid == true
 													) {
 
+														console.log(JSON.parse(data.updatedIds));
+
 														// Add Submit button
 														formSubmitButton.classList.remove('d-none');
 														formSubmitButton.classList.add('d-inline-block');
