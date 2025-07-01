@@ -12,6 +12,7 @@ var KTImportCampaign = function () {
 	var formContinueButton;
 	var formReviewButton;
 	var formSubmitButton;
+	var updatedIds = {};
 
 	// Variables
 	var stepperObj;
@@ -222,11 +223,12 @@ var KTImportCampaign = function () {
 														&& data.fileIsValid == true
 													) {
 
-														console.log(JSON.parse(data.updatedIds));
-
 														// Add Submit button
 														formSubmitButton.classList.remove('d-none');
 														formSubmitButton.classList.add('d-inline-block');
+
+														// Store IDs that need updating
+														updatedIds = data.updatedIds;
 													}
 
 												} else {
@@ -276,6 +278,7 @@ var KTImportCampaign = function () {
 														"widgets": widgets.value,
 														"dashboards": dashboards.value,
 														"importData": importData,
+														"updatedIds": updatedIds
 													}
 												));
 										}

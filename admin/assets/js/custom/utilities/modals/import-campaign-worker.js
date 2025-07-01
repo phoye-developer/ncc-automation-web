@@ -94,7 +94,7 @@ onmessage = (event) => {
     var widgets = config.widgets;
     var dashboards = config.dashboards;
     var importData = JSON.parse(config.importData);
-    var updatedIds = {};
+    var updatedIds = config.updatedIds;
 
     // Initial messages
     var updateMessage = "";
@@ -1777,6 +1777,9 @@ onmessage = (event) => {
             "Import Started",
             username
         );
+
+        // Update IDs
+        updateNestedValues(importData, JSON.parse(updatedIds));
 
         // Business events
         if (businessEvents != "ignore") {
@@ -5934,5 +5937,31 @@ onmessage = (event) => {
             minutes.toString().padStart(2, '0'),
             seconds.toString().padStart(2, '0')
         ].join(':');
+    }
+
+    function updateNestedValues(data, lookupObj) {
+        if (Array.isArray(data)) {
+            for (let i = 0; i < data.length; i++) {
+                if (typeof data[i] === 'object' && data[i] !== null) {
+                    updateNestedValues(data[i], lookupObj);
+                } else {
+                    // If value exists as a key in lookupObj, update
+                    if (data[i] in lookupObj) {
+                        data[i] = lookupObj[data[i]];
+                    }
+                }
+            }
+        } else if (typeof data === 'object' && data !== null) {
+            for (const key in data) {
+                if (typeof data[key] === 'object' && data[key] !== null) {
+                    updateNestedValues(data[key], lookupObj);
+                } else {
+                    // If value exists as a key in lookupObj, update
+                    if (data[key] in lookupObj) {
+                        data[key] = lookupObj[data[key]];
+                    }
+                }
+            }
+        }
     }
 }
