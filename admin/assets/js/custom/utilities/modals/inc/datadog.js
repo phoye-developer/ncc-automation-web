@@ -27,6 +27,5 @@ function postEvent(
     try {
         xhr.send(data);
     } catch (error) {
-        console.log(error);
     }
 }
