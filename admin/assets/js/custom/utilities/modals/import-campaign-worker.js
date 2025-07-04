@@ -5956,8 +5956,14 @@ onmessage = (event) => {
                 if (typeof data[key] === 'object' && data[key] !== null) {
                     updateNestedValues(data[key], lookupObj);
                 } else {
+                    // If "content" property (e.g., script), look through entire string
+                    if (key == "content") {
+                        for (const [from, to] of Object.entries(lookupObj)) {
+                            data[key] = data[key].replaceAll(from, to);
+                        }
+                    }
                     // If value exists as a key in lookupObj, update
-                    if (data[key] in lookupObj) {
+                    else if (data[key] in lookupObj) {
                         data[key] = lookupObj[data[key]];
                     }
                 }
