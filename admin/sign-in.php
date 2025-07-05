@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 Author: Nextiva, Inc.
-Product Name: Nextiva Automation Tool Version: 1.1.0
+Product Name: Nextiva Automation Tool Version: 1.1.1
 Website: https://www.nextiva.com
 Contact: phoye@nextiva.com
 -->
@@ -36,6 +36,7 @@ Contact: phoye@nextiva.com
 
         document.cookie = "nccLocation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "nccToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "tenantId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     </script>
 </head>

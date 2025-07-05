@@ -2269,6 +2269,29 @@ onmessage = (event) => {
                         // Add script to config
                         config.scripts.push(script);
                         postMessage(`[INFO] Script "${script.name}" found.`);
+
+                        // Check for ID references
+                        let match;
+
+                        let queueIdRegex = /["']queueId["']\s*:\s*["']([a-f0-9]{24})["']/g; // For data dictionaries
+                        while ((match = queueIdRegex.exec(script.content))) {
+                            processQueue(match[1]);
+                        }
+
+                        queueIdRegex = /queueId\s*=\s*["']([^"']*)["']/g; // For direct assignment
+                        while ((match = queueIdRegex.exec(script.content))) {
+                            processQueue(match[1]);
+                        }
+
+                        let promptIdRegex = /["']promptId["']\s*:\s*["']([a-f0-9]{24})["']/g; // For data dictionaries
+                        while ((match = promptIdRegex.exec(script.content))) {
+                            processPrompt(match[1]);
+                        }
+
+                        promptIdRegex = /promptId\s*=\s*["']([^"']*)["']/g; // For direct assignment
+                        while ((match = promptIdRegex.exec(script.content))) {
+                            processPrompt(match[1]);
+                        }
                     } else {
                         postMessage(`[ERROR] Script with ID "${scriptId}" not found.`);
                     }

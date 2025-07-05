@@ -126,51 +126,267 @@ var KTSigninGeneral = function () {
                     const credentials = btoa(`${form.querySelector('[name="email"]').value}:${form.querySelector('[name="password"]').value}`);
 
                     // Get token with authorities
-                    var xhr = new XMLHttpRequest();
+                    let xhr = new XMLHttpRequest();
                     xhr.withCredentials = true;
 
-                    xhr.addEventListener("readystatechange", function () {
-                        if (this.readyState === 4) {
-                            if (xhr.status == 200) {
+                    xhr.open("GET", "https://login.thrio.com/provider/token-with-authorities", false);
+                    xhr.setRequestHeader("Authorization", `Basic ${credentials}`);
 
-                                let nccLocation = "";
-                                let nccToken = "";
-                                let username = "";
+                    try {
+                        xhr.send();
 
-                                const data = JSON.parse(this.responseText);
+                        // Check if success
+                        if (xhr.status == 200) {
 
-                                // Set cookie expiration date
-                                let cookieExpiry = new Date();
-                                cookieExpiry.setHours(cookieExpiry.getHours() + 24);
-                                cookieExpiry = cookieExpiry.toUTCString();
+                            let nccLocation = "";
+                            let nccToken = "";
+                            let username = "";
 
-                                if (data.location) {
-                                    nccLocation = data.location;
-                                    document.cookie = `nccLocation=${nccLocation}; expires=${cookieExpiry}; path=/`;
+                            const data = JSON.parse(xhr.responseText);
+
+                            if (data.location) {
+                                nccLocation = data.location;
+                            }
+                            if (data.token) {
+                                nccToken = data.token;
+                            }
+                            if (data.token) {
+                                username = form.querySelector('[name="email"]').value;
+                            }
+
+                            if (
+                                nccLocation != ""
+                                && nccToken != ""
+                                && username != ""
+                            ) {
+
+                                // Search username
+                                let xhr = new XMLHttpRequest();
+                                xhr.withCredentials = true;
+
+                                let searchTerm = username;
+                                let index = username.indexOf("+");
+                                if (index != -1) {
+                                    searchTerm = username.substring(0, index);
                                 }
-                                if (data.token) {
-                                    nccToken = data.token;
-                                    document.cookie = `nccToken=${nccToken}; expires=${cookieExpiry}; path=/`;
-                                }
-                                if (data.token) {
-                                    username = form.querySelector('[name="email"]').value;
-                                    document.cookie = `username=${username}; expires=${cookieExpiry}; path=/`;
-                                }
+                                xhr.open("GET", `${nccLocation}/data/api/types/user?q=${searchTerm}`, false);
+                                xhr.setRequestHeader("Authorization", nccToken);
 
-                                if (
-                                    nccLocation != ""
-                                    && nccToken != ""
-                                    && username != ""
-                                ) {
-                                    const redirectUrl = form.getAttribute('data-kt-redirect-url');
+                                try {
+                                    xhr.send();
 
-                                    if (redirectUrl) {
-                                        location.href = redirectUrl;
+                                    // Check if success
+                                    if (xhr.status == 200) {
+
+                                        const users = JSON.parse(xhr.responseText);
+
+                                        // Check results
+                                        let user = {};
+                                        if (
+                                            users.count
+                                            && users.count > 0
+                                        ) {
+                                            let usersFound = users.objects;
+                                            usersFound.forEach(userFound => {
+                                                if (userFound.username == username) {
+                                                    user = userFound;
+                                                }
+                                            });
+                                        }
+
+                                        if (Object.keys(user).length > 0) {
+
+                                            // Get userProfileId
+                                            let userProfileId = "";
+                                            if (user.userProfileId) {
+                                                userProfileId = user.userProfileId;
+                                            }
+
+                                            if (userProfileId != "") {
+
+                                                // Get user profile
+                                                let xhr = new XMLHttpRequest();
+                                                xhr.withCredentials = true;
+
+                                                xhr.open("GET", `${nccLocation}/data/api/types/userprofile/${userProfileId}`, false);
+                                                xhr.setRequestHeader("Authorization", nccToken);
+
+                                                try {
+                                                    xhr.send();
+
+                                                    // Check if success
+                                                    if (xhr.status == 200) {
+
+                                                        const userProfile = JSON.parse(xhr.responseText);
+
+                                                        // Check user profile
+                                                        if (
+                                                            userProfile.name
+                                                            && userProfile.name == "Administrator"
+                                                        ) {
+
+                                                            // Set cookie expiration date
+                                                            let cookieExpiry = new Date();
+                                                            cookieExpiry.setHours(cookieExpiry.getHours() + 24);
+                                                            cookieExpiry = cookieExpiry.toUTCString();
+
+                                                            // Set cookies
+                                                            document.cookie = `nccLocation=${nccLocation}; expires=${cookieExpiry}; path=/`;
+                                                            document.cookie = `nccToken=${nccToken}; expires=${cookieExpiry}; path=/`;
+                                                            document.cookie = `username=${username}; expires=${cookieExpiry}; path=/`;
+                                                            if (userProfile.tenantId) {
+                                                                document.cookie = `tenantId=${userProfile.tenantId}; expires=${cookieExpiry}; path=/`;
+                                                            }
+
+                                                            // Redirect to home page
+                                                            const redirectUrl = form.getAttribute('data-kt-redirect-url');
+
+                                                            if (redirectUrl) {
+                                                                location.href = redirectUrl;
+                                                            }
+                                                        } else {
+                                                            Swal.fire({
+                                                                text: "Sorry, but you need to be an administrator, please try again.",
+                                                                icon: "error",
+                                                                buttonsStyling: false,
+                                                                confirmButtonText: "Ok, got it!",
+                                                                customClass: {
+                                                                    confirmButton: "btn btn-primary"
+                                                                }
+                                                            });
+
+                                                            // Reset form
+                                                            form.reset();
+
+                                                            // Hide loading indication
+                                                            submitButton.removeAttribute('data-kt-indicator');
+
+                                                            // Enable button
+                                                            submitButton.disabled = false;
+                                                        }
+                                                    } else {
+                                                        Swal.fire({
+                                                            text: "Sorry, something went wrong getting your user profile, please try again.",
+                                                            icon: "error",
+                                                            buttonsStyling: false,
+                                                            confirmButtonText: "Ok, got it!",
+                                                            customClass: {
+                                                                confirmButton: "btn btn-primary"
+                                                            }
+                                                        });
+
+                                                        // Reset form
+                                                        form.reset();
+
+                                                        // Hide loading indication
+                                                        submitButton.removeAttribute('data-kt-indicator');
+
+                                                        // Enable button
+                                                        submitButton.disabled = false;
+                                                    }
+                                                } catch (error) {
+                                                    Swal.fire({
+                                                        text: "Sorry, something went wrong getting your user profile, please try again.",
+                                                        icon: "error",
+                                                        buttonsStyling: false,
+                                                        confirmButtonText: "Ok, got it!",
+                                                        customClass: {
+                                                            confirmButton: "btn btn-primary"
+                                                        }
+                                                    });
+
+                                                    // Reset form
+                                                    form.reset();
+
+                                                    // Hide loading indication
+                                                    submitButton.removeAttribute('data-kt-indicator');
+
+                                                    // Enable button
+                                                    submitButton.disabled = false;
+                                                }
+                                            } else {
+                                                Swal.fire({
+                                                    text: "Sorry, something's wrong with your user, please try again.",
+                                                    icon: "error",
+                                                    buttonsStyling: false,
+                                                    confirmButtonText: "Ok, got it!",
+                                                    customClass: {
+                                                        confirmButton: "btn btn-primary"
+                                                    }
+                                                });
+
+                                                // Reset form
+                                                form.reset();
+
+                                                // Hide loading indication
+                                                submitButton.removeAttribute('data-kt-indicator');
+
+                                                // Enable button
+                                                submitButton.disabled = false;
+                                            }
+                                        } else {
+                                            Swal.fire({
+                                                text: "Sorry, but your user wasn't found, please try again.",
+                                                icon: "error",
+                                                buttonsStyling: false,
+                                                confirmButtonText: "Ok, got it!",
+                                                customClass: {
+                                                    confirmButton: "btn btn-primary"
+                                                }
+                                            });
+
+                                            // Reset form
+                                            form.reset();
+
+                                            // Hide loading indication
+                                            submitButton.removeAttribute('data-kt-indicator');
+
+                                            // Enable button
+                                            submitButton.disabled = false;
+                                        }
+                                    } else {
+                                        Swal.fire({
+                                            text: "Sorry, something went wrong with the search, please try again.",
+                                            icon: "error",
+                                            buttonsStyling: false,
+                                            confirmButtonText: "Ok, got it!",
+                                            customClass: {
+                                                confirmButton: "btn btn-primary"
+                                            }
+                                        });
+
+                                        // Reset form
+                                        form.reset();
+
+                                        // Hide loading indication
+                                        submitButton.removeAttribute('data-kt-indicator');
+
+                                        // Enable button
+                                        submitButton.disabled = false;
                                     }
+                                } catch (error) {
+                                    Swal.fire({
+                                        text: "Sorry, something went wrong with the search, please try again.",
+                                        icon: "error",
+                                        buttonsStyling: false,
+                                        confirmButtonText: "Ok, got it!",
+                                        customClass: {
+                                            confirmButton: "btn btn-primary"
+                                        }
+                                    });
+
+                                    // Reset form
+                                    form.reset();
+
+                                    // Hide loading indication
+                                    submitButton.removeAttribute('data-kt-indicator');
+
+                                    // Enable button
+                                    submitButton.disabled = false;
                                 }
                             } else {
                                 Swal.fire({
-                                    text: "Sorry, the email or password is incorrect, please try again.",
+                                    text: "Sorry, something's wrong with your login info, please try again.",
                                     icon: "error",
                                     buttonsStyling: false,
                                     confirmButtonText: "Ok, got it!",
@@ -188,14 +404,46 @@ var KTSigninGeneral = function () {
                                 // Enable button
                                 submitButton.disabled = false;
                             }
-                        }
-                    });
+                        } else {
+                            Swal.fire({
+                                text: "Sorry, the email or password is incorrect, please try again.",
+                                icon: "error",
+                                buttonsStyling: false,
+                                confirmButtonText: "Ok, got it!",
+                                customClass: {
+                                    confirmButton: "btn btn-primary"
+                                }
+                            });
 
-                    xhr.open("GET", "https://login.thrio.com/provider/token-with-authorities");
-                    xhr.setRequestHeader("Authorization", `Basic ${credentials}`);
+                            // Reset form
+                            form.reset();
 
-                    xhr.send();
+                            // Hide loading indication
+                            submitButton.removeAttribute('data-kt-indicator');
 
+                            // Enable button
+                            submitButton.disabled = false;
+                        };
+                    } catch (error) {
+                        Swal.fire({
+                            text: "Sorry, something went wrong with your log in, please try again.",
+                            icon: "error",
+                            buttonsStyling: false,
+                            confirmButtonText: "Ok, got it!",
+                            customClass: {
+                                confirmButton: "btn btn-primary"
+                            }
+                        });
+
+                        // Reset form
+                        form.reset();
+
+                        // Hide loading indication
+                        submitButton.removeAttribute('data-kt-indicator');
+
+                        // Enable button
+                        submitButton.disabled = false;
+                    }
                 } else {
                     // Show error popup. For more info check the plugin's official documentation: https://sweetalert2.github.io/
                     Swal.fire({
