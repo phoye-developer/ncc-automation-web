@@ -58,6 +58,7 @@ onmessage = (event) => {
     var action = config.action;
     var nccLocation = config.nccLocation;
     var nccToken = config.nccToken;
+    var tenantId = config.tenantId;
     var username = config.username;
     var campaigns = config.campaigns;
     var dialPlans = config.dialPlans;
@@ -5961,6 +5962,9 @@ onmessage = (event) => {
                         for (const [from, to] of Object.entries(lookupObj)) {
                             data[key] = data[key].replaceAll(from, to);
                         }
+                    }
+                    else if (key == "tenantId") {
+                        data[key] = tenantId;
                     }
                     // If value exists as a key in lookupObj, update
                     else if (data[key] in lookupObj) {

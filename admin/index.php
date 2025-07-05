@@ -40,18 +40,29 @@ Contact: phoye@nextiva.com
             window.top.location.replace(window.self.location.href);
         }
 
-        // Check if nccLocation and nccToken cookies exist
+        // Check if cookies exist
         let nccLocation = "";
         let nccToken = "";
+        let tenantId = "";
+        let username = "";
         const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
         cookies.forEach(cookie => {
             if (cookie.startsWith("nccLocation=")) {
                 nccLocation = cookie.substring(12);
             } else if (cookie.startsWith("nccToken=")) {
                 nccToken = cookie.substring(9);
+            } else if (cookie.startsWith("tenantId=")) {
+                tenantId = cookie.substring(9);
+            } else if (cookie.startsWith("username=")) {
+                username = cookie.substring(9);
             }
         });
-        if (nccLocation === "" || nccToken === "") {
+        if (
+            nccLocation === "" ||
+            nccToken === "" ||
+            tenantId === "" ||
+            username === ""
+        ) {
             window.location.href = "sign-in.php";
         }
 
@@ -61,7 +72,9 @@ Contact: phoye@nextiva.com
             cookies.forEach(cookie => {
                 if (
                     cookie.startsWith("nccLocation=") ||
-                    cookie.startsWith("nccToken=")
+                    cookie.startsWith("nccToken=") ||
+                    cookie.startsWith("tenantId") ||
+                    cookie.startsWith("username=")
                 ) {
                     success = true;
                 }

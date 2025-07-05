@@ -234,6 +234,9 @@ var KTSigninGeneral = function () {
                                                             document.cookie = `nccLocation=${nccLocation}; expires=${cookieExpiry}; path=/`;
                                                             document.cookie = `nccToken=${nccToken}; expires=${cookieExpiry}; path=/`;
                                                             document.cookie = `username=${username}; expires=${cookieExpiry}; path=/`;
+                                                            if (userProfile.tenantId) {
+                                                                document.cookie = `tenantId=${userProfile.tenantId}; expires=${cookieExpiry}; path=/`;
+                                                            }
 
                                                             // Redirect to home page
                                                             const redirectUrl = form.getAttribute('data-kt-redirect-url');
