@@ -12,20 +12,14 @@ if (
     $ncc_location
     && $ncc_token
 ) {
-    $campaigns = get_campaigns(
+    $data = get_export_campaign_info(
         $ncc_location,
         $ncc_token
     );
 
-    $reports = get_reports(
-        $ncc_location,
-        $ncc_token
-    );
-
-    $home_tabs = get_home_tabs(
-        $ncc_location,
-        $ncc_token
-    );
+    $campaigns = $data[0];
+    $reports = $data[1];
+    $home_tabs = $data[2];
 }
 
 if (count($campaigns) > 0) {
