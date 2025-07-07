@@ -21,28 +21,26 @@ if (
     $ncc_location
     && $ncc_token
 ) {
-    $campaigns = get_campaigns(
+    $data = get_default_dashboard_info(
         $ncc_location,
         $ncc_token
     );
+
+    error_log($data[0]["count"]);
+
+    $campaigns = $data[1];
 
     foreach ($campaigns as $campaign) {
         $campaign_names[$campaign['_id']] = $campaign['name'];
     }
 
-    $dispositions = get_dispositions(
-        $ncc_location,
-        $ncc_token
-    );
+    $dispositions = $data[2];
 
     foreach ($dispositions as $disposition) {
         $disposition_names[$disposition['_id']] = $disposition['name'];
     }
 
-    $history = get_history(
-        $ncc_location,
-        $ncc_token
-    );
+    $history = $data[0];
 
     if (array_key_exists("summary", $history)) {
         $totalInboundCalls = $history["summary"]["totalInbound"];

@@ -292,3 +292,162 @@ function get_history(
 
     return $history;
 }
+
+function get_default_dashboard_info(
+    $ncc_location,
+    $ncc_token
+) {
+
+    $history = [];
+    $campaigns = [];
+    $dispositions = [];
+    $data = [];
+
+    $urls = [
+        "$ncc_location/analytics/api/types/workitems/history?rangeType=today",
+        "$ncc_location/data/api/types/campaign",
+        "$ncc_location/data/api/types/disposition"
+    ];
+
+    $curl = curl_multi_init();
+
+    $requests = [];
+    foreach ($urls as $i => $url) {
+        $requests[$i] = curl_init($url);
+        curl_setopt($requests[$i], CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($requests[$i], CURLOPT_ENCODING, '');
+        curl_setopt($requests[$i], CURLOPT_MAXREDIRS, 10);
+        curl_setopt($requests[$i], CURLOPT_TIMEOUT, 10);
+        curl_setopt($requests[$i], CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($requests[$i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        curl_setopt($requests[$i], CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($requests[$i], CURLOPT_HTTPHEADER, array(
+            "Authorization: $ncc_token"
+        ));
+        curl_multi_add_handle($curl, $requests[$i]);
+    }
+
+    $active = null;
+    do {
+        curl_multi_exec($curl, $active);
+    } while ($active);
+
+
+    $response = [];
+    $response_codes = [];
+    foreach ($requests as $request) {
+        $response[] = curl_multi_getcontent($request);
+        $response_codes[] = curl_getinfo($request, CURLINFO_HTTP_CODE);
+        curl_multi_remove_handle($curl, $request);
+        curl_close($request);
+    }
+
+    curl_multi_close($curl);
+
+    if ($response_codes[0] == 200) {
+        $history = json_decode($response[0], true);
+    }
+
+    if ($response_codes[1] == 200) {
+        $body = json_decode($response[1], true);
+        if ($body["objects"]) {
+            $campaigns = $body["objects"];
+        }
+    }
+
+    if ($response_codes[2] == 200) {
+        $body = json_decode($response[2], true);
+        if ($body["objects"]) {
+            $dispositions = $body["objects"];
+        }
+    }
+
+    $data = [
+        $history,
+        $campaigns,
+        $dispositions
+    ];
+
+    return $data;
+}
+
+function get_export_campaign_info(
+    $ncc_location,
+    $ncc_token
+) {
+
+    $campaigns = [];
+    $reports = [];
+    $home_tabs = [];
+    $data = [];
+
+    $urls = [
+        "$ncc_location/data/api/types/campaign",
+        "$ncc_location/data/api/types/report",
+        "$ncc_location/data/api/types/hometab"
+    ];
+
+    $curl = curl_multi_init();
+
+    $requests = [];
+    foreach ($urls as $i => $url) {
+        $requests[$i] = curl_init($url);
+        curl_setopt($requests[$i], CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($requests[$i], CURLOPT_ENCODING, '');
+        curl_setopt($requests[$i], CURLOPT_MAXREDIRS, 10);
+        curl_setopt($requests[$i], CURLOPT_TIMEOUT, 10);
+        curl_setopt($requests[$i], CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($requests[$i], CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
+        curl_setopt($requests[$i], CURLOPT_CUSTOMREQUEST, 'GET');
+        curl_setopt($requests[$i], CURLOPT_HTTPHEADER, array(
+            "Authorization: $ncc_token"
+        ));
+        curl_multi_add_handle($curl, $requests[$i]);
+    }
+
+    $active = null;
+    do {
+        curl_multi_exec($curl, $active);
+    } while ($active);
+
+
+    $response = [];
+    $response_codes = [];
+    foreach ($requests as $request) {
+        $response[] = curl_multi_getcontent($request);
+        $response_codes[] = curl_getinfo($request, CURLINFO_HTTP_CODE);
+        curl_multi_remove_handle($curl, $request);
+        curl_close($request);
+    }
+
+    curl_multi_close($curl);
+
+    if ($response_codes[0] == 200) {
+        $body = json_decode($response[0], true);
+        if ($body["objects"]) {
+            $campaigns = $body["objects"];
+        }
+    }
+
+    if ($response_codes[1] == 200) {
+        $body = json_decode($response[1], true);
+        if ($body["objects"]) {
+            $reports = $body["objects"];
+        }
+    }
+
+    if ($response_codes[2] == 200) {
+        $body = json_decode($response[2], true);
+        if ($body["objects"]) {
+            $home_tabs = $body["objects"];
+        }
+    }
+
+    $data = [
+        $campaigns,
+        $reports,
+        $home_tabs
+    ];
+
+    return $data;
+}
