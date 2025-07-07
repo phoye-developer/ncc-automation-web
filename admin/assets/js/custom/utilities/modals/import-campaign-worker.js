@@ -2,8 +2,16 @@ importScripts("inc/config-dispositions.js");
 importScripts("inc/config-queues.js");
 importScripts("inc/datadog.js");
 importScripts("inc/ncc-business-events.js");
+importScripts("inc/ncc-campaign-agent-scripts.js");
+importScripts("inc/ncc-campaign-dial-plans.js");
+importScripts("inc/ncc-campaign-dispositions.js");
 importScripts("inc/ncc-campaign-goals.js");
+importScripts("inc/ncc-campaign-partitions.js");
+importScripts("inc/ncc-campaign-scorecards.js");
 importScripts("inc/ncc-campaign-scripts.js");
+importScripts("inc/ncc-campaign-speech-contexts.js");
+importScripts("inc/ncc-campaign-templates.js");
+importScripts("inc/ncc-campaign-whatsapp-templates.js");
 importScripts("inc/ncc-campaigns.js");
 importScripts("inc/ncc-categories.js");
 importScripts("inc/ncc-category-summaries.js");
@@ -426,7 +434,7 @@ onmessage = (event) => {
                     } else {
 
                         // Check if classification with same name already exists
-                        let classificationFound = getBusinessEventByName(
+                        let classificationFound = getClassificationByName(
                             nccLocation,
                             nccToken,
                             classification.name
@@ -513,9 +521,9 @@ onmessage = (event) => {
 
                     // Check if dial plan found
                     if (Object.keys(dialPlanFound).length > 0) {
-                        postMessage(`[INFO] Business event "${dialPlanFound.name}" found.`);
+                        postMessage(`[INFO] Dial plan "${dialPlanFound.name}" found.`);
                         if (action == "update") {
-                            updateMessage += `\tBusiness event "${dialPlanFound.name}" found, ID: "${dialPlan._id}".\n`;
+                            updateMessage += `\tDial plan "${dialPlanFound.name}" found, ID: "${dialPlan._id}".\n`;
                         }
                     } else {
 
@@ -528,9 +536,9 @@ onmessage = (event) => {
 
                         if (Object.keys(dialPlanFound).length > 0) {
                             updatedIds[dialPlan._id] = dialPlanFound._id;
-                            postMessage(`[INFO] Business event "${dialPlanFound.name}" found, but with different ID.`);
+                            postMessage(`[INFO] Dial plan "${dialPlanFound.name}" found, but with different ID.`);
                             if (action == "update") {
-                                updateMessage += `\tBusiness event "${dialPlanFound.name}", ID: "${dialPlanFound._id}".\n`;
+                                updateMessage += `\tDial plan "${dialPlanFound.name}", ID: "${dialPlanFound._id}".\n`;
                             }
                         }
                     }
@@ -5860,6 +5868,858 @@ onmessage = (event) => {
             }
         } else {
             postMessage(`[INFO] Workflows ignored.`);
+        }
+
+        // ==============================
+        // Object assignments
+        // ==============================
+
+        // Assign campaign agent scripts to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaignagentscripts
+                if (
+                    "scripts" in campaign
+                    && "count" in campaign.scripts
+                    && campaign.scripts.count > 0
+                ) {
+                    let campaignAgentScripts = campaign.scripts.objects;
+                    campaignAgentScripts.forEach(campaignAgentScript => {
+                        if (
+                            "campaignId" in campaignAgentScript
+                            && "campaignscriptId" in campaignAgentScript
+                        ) {
+                            let campaignId = campaignAgentScript.campaignId;
+                            let campaignScriptId = campaignAgentScript.campaignscriptId;
+
+                            // Check if already assigned
+                            let campaignAgentScriptFound = searchCampaignAgentScripts(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                campaignScriptId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignAgentScriptFound).length > 0) {
+                                if (
+                                    "expansions" in campaignAgentScript
+                                    && "campaignscriptId" in campaignAgentScript.expansions
+                                    && "name" in campaignAgentScript.expansions.campaignscriptId
+                                    && campaignAgentScript.expansions.campaignscriptId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Campaign script "${campaignAgentScript.expansions.campaignscriptId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Campaign script ID "${campaignScriptId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if campaign script exists
+                                    let campaignScript = getCampaignScriptById(
+                                        nccLocation,
+                                        nccToken,
+                                        campaignScriptId
+                                    );
+
+                                    // Check if campaign script found
+                                    if (Object.keys(campaignScript).length > 0) {
+
+                                        // Assign campaign script to campaign
+                                        let campaignAgentScriptCreated = createCampaignAgentScript(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            campaignScriptId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignAgentScriptCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignAgentScriptCreated
+                                                && "campaignscriptId" in campaignAgentScriptCreated.expansions
+                                                && "name" in campaignAgentScriptCreated.expansions.campaignscriptId
+                                                && campaignAgentScriptCreated.expansions.campaignscriptId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Campaign script "${campaignAgentScriptCreated.expansions.campaignscriptId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Campaign script ID "${campaignscriptId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaignAgentScript
+                                                && "campaignscriptId" in campaignAgentScript.expansions
+                                                && "name" in campaignAgentScript.expansions.campaignscriptId
+                                                && campaignAgentScript.expansions.campaignscriptId.name != ""
+                                            ) {
+                                                errorMessage += `\tCampaign script "${campaignAgentScript.expansions.campaignscriptId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Campaign script "${campaignAgentScript.expansions.campaignscriptId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tCampaign script ID "${campaignscriptId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Campaign script ID "${campaignscriptId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign dial plans to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaigndialplans
+                if (
+                    "dialplans" in campaign
+                    && "count" in campaign.dialplans
+                    && campaign.dialplans.count > 0
+                ) {
+                    let campaignDialPlans = campaign.dialplans.objects;
+                    campaignDialPlans.forEach(campaignDialPlan => {
+                        if (
+                            "campaignId" in campaignDialPlan
+                            && "dialplanId" in campaignDialPlan
+                        ) {
+                            let campaignId = campaignDialPlan.campaignId;
+                            let dialPlanId = campaignDialPlan.dialplanId;
+
+                            // Check if already assigned
+                            let campaignDialPlanFound = searchCampaignDialPlans(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                dialPlanId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignDialPlanFound).length > 0) {
+                                if (
+                                    "expansions" in campaignDialPlan
+                                    && "dialplanId" in campaignDialPlan.expansions
+                                    && "name" in campaignDialPlan.expansions.dialplanId
+                                    && campaignDialPlan.expansions.dialplanId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Dial plan "${campaignDialPlan.expansions.dialplanId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Dial plan ID "${dialPlanId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if dial plan exists
+                                    let dialplan = getDialPlanById(
+                                        nccLocation,
+                                        nccToken,
+                                        dialPlanId
+                                    );
+
+                                    // Check if dial plan found
+                                    if (Object.keys(dialplan).length > 0) {
+
+                                        // Assign dial plan to campaign
+                                        let campaignDialPlanCreated = createCampaignDialPlan(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            dialPlanId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignDialPlanCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignDialPlanCreated
+                                                && "dialplanId" in campaignDialPlanCreated.expansions
+                                                && "name" in campaignDialPlanCreated.expansions.dialplanId
+                                                && campaignDialPlanCreated.expansions.dialplanId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Dial plan "${campaignDialPlanCreated.expansions.dialplanId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Dial plan ID "${dialPlanId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaignDialPlan
+                                                && "dialplanId" in campaignDialPlan.expansions
+                                                && "name" in campaignDialPlan.expansions.dialplanId
+                                                && campaignDialPlan.expansions.dialplanId.name != ""
+                                            ) {
+                                                errorMessage += `\tDial plan "${campaignDialPlan.expansions.dialplanId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Dial plan "${campaignDialPlan.expansions.dialplanId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tDial plan ID "${dialPlanId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Dial plan ID "${dialPlanId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign dispositions to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaigndispositions
+                if (
+                    "dispositions" in campaign
+                    && "count" in campaign.dispositions
+                    && campaign.dispositions.count > 0
+                ) {
+                    let campaigndispositions = campaign.dispositions.objects;
+                    campaigndispositions.forEach(campaigndisposition => {
+                        if (
+                            "campaignId" in campaigndisposition
+                            && "dispositionId" in campaigndisposition
+                        ) {
+                            let campaignId = campaigndisposition.campaignId;
+                            let dispositionId = campaigndisposition.dispositionId;
+
+                            // Check if already assigned
+                            let campaignDispositionFound = searchCampaignDispositions(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                dispositionId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignDispositionFound).length > 0) {
+                                if (
+                                    "expansions" in campaigndisposition
+                                    && "dispositionId" in campaigndisposition.expansions
+                                    && "name" in campaigndisposition.expansions.dispositionId
+                                    && campaigndisposition.expansions.dispositionId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Disposition "${campaigndisposition.expansions.dispositionId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Disposition ID "${dispositionId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if disposition exists
+                                    let disposition = getDispositionById(
+                                        nccLocation,
+                                        nccToken,
+                                        dispositionId
+                                    );
+
+                                    // Check if disposition found
+                                    if (Object.keys(disposition).length > 0) {
+
+                                        // Assign disposition to campaign
+                                        let campaignDispositionCreated = createCampaignDisposition(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            dispositionId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignDispositionCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignDispositionCreated
+                                                && "dispositionId" in campaignDispositionCreated.expansions
+                                                && "name" in campaignDispositionCreated.expansions.dispositionId
+                                                && campaignDispositionCreated.expansions.dispositionId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Disposition "${campaignDispositionCreated.expansions.dispositionId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Disposition ID "${dispositionId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaigndisposition
+                                                && "dispositionId" in campaigndisposition.expansions
+                                                && "name" in campaigndisposition.expansions.dispositionId
+                                                && campaigndisposition.expansions.dispositionId.name != ""
+                                            ) {
+                                                errorMessage += `\tDisposition "${campaigndisposition.expansions.dispositionId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Disposition "${campaigndisposition.expansions.dispositionId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tDisposition ID "${dispositionId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Disposition ID "${dispositionId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign partitions to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaignpartitions
+                if (
+                    "partitions" in campaign
+                    && "count" in campaign.partitions
+                    && campaign.partitions.count > 0
+                ) {
+                    let campaignPartitions = campaign.partitions.objects;
+                    campaignPartitions.forEach(campaignPartition => {
+                        if (
+                            "campaignId" in campaignPartition
+                            && "partitionsId" in campaignPartition
+                        ) {
+                            let campaignId = campaignPartition.campaignId;
+                            let partitionId = campaignPartition.partitionsId;
+
+                            // Check if already assigned
+                            let campaignPartitionFound = searchCampaignPartitions(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                partitionId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignPartitionFound).length > 0) {
+                                if (
+                                    "expansions" in campaignPartition
+                                    && "partitionsId" in campaignPartition.expansions
+                                    && "name" in campaignPartition.expansions.partitionsId
+                                    && campaignPartition.expansions.partitionsId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Partition "${campaignPartition.expansions.partitionsId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Partition ID "${partitionId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if partition exists
+                                    let partition = getPartitionById(
+                                        nccLocation,
+                                        nccToken,
+                                        partitionId
+                                    );
+
+                                    // Check if partition found
+                                    if (Object.keys(partition).length > 0) {
+
+                                        // Assign partition to campaign
+                                        let campaignPartitionCreated = createCampaignPartition(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            partitionId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignPartitionCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignPartitionCreated
+                                                && "partitionsId" in campaignPartitionCreated.expansions
+                                                && "name" in campaignPartitionCreated.expansions.partitionsId
+                                                && campaignPartitionCreated.expansions.partitionsId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Partition "${campaignPartitionCreated.expansions.partitionsId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Partition ID "${partitionId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaignPartition
+                                                && "partitionsId" in campaignPartition.expansions
+                                                && "name" in campaignPartition.expansions.partitionsId
+                                                && campaignPartition.expansions.partitionsId.name != ""
+                                            ) {
+                                                errorMessage += `\tPartition "${campaignPartition.expansions.partitionsId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Partition "${campaignPartition.expansions.partitionsId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tPartition ID "${partitionId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Partition ID "${partitionId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign scorecards to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaignscorecards
+                if (
+                    "scorecards" in campaign
+                    && "count" in campaign.scorecards
+                    && campaign.scorecards.count > 0
+                ) {
+                    let campaignScorecards = campaign.scorecards.objects;
+                    campaignScorecards.forEach(campaignScorecard => {
+                        if (
+                            "campaignId" in campaignScorecard
+                            && "scorecardId" in campaignScorecard
+                        ) {
+                            let campaignId = campaignScorecard.campaignId;
+                            let scorecardId = campaignScorecard.scorecardId;
+
+                            // Check if already assigned
+                            let campaignScorecardFound = searchCampaignScorecards(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                scorecardId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignScorecardFound).length > 0) {
+                                if (
+                                    "expansions" in campaignScorecard
+                                    && "scorecardId" in campaignScorecard.expansions
+                                    && "name" in campaignScorecard.expansions.scorecardId
+                                    && campaignScorecard.expansions.scorecardId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Scorecard "${campaignScorecard.expansions.scorecardId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Scorecard ID "${scorecardId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if scorecard exists
+                                    let scorecard = getScorecardById(
+                                        nccLocation,
+                                        nccToken,
+                                        scorecardId
+                                    );
+
+                                    // Check if scorecard found
+                                    if (Object.keys(scorecard).length > 0) {
+
+                                        // Assign scorecard to campaign
+                                        let campaignScorecardCreated = createCampaignScorecard(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            scorecardId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignScorecardCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignScorecardCreated
+                                                && "scorecardId" in campaignScorecardCreated.expansions
+                                                && "name" in campaignScorecardCreated.expansions.scorecardId
+                                                && campaignScorecardCreated.expansions.scorecardId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Scorecard "${campaignScorecardCreated.expansions.scorecardId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Scorecard ID "${scorecardId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaignScorecard
+                                                && "scorecardId" in campaignScorecard.expansions
+                                                && "name" in campaignScorecard.expansions.scorecardId
+                                                && campaignScorecard.expansions.scorecardId.name != ""
+                                            ) {
+                                                errorMessage += `\tScorecard "${campaignScorecard.expansions.scorecardId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Scorecard "${campaignScorecard.expansions.scorecardId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tScorecard ID "${scorecardId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Scorecard ID "${scorecardId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign speech contexts to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find speechContexts
+                if (
+                    "speechContexts" in campaign
+                    && "count" in campaign.speechContexts
+                    && campaign.speechContexts.count > 0
+                ) {
+                    let campaignSpeechContexts = campaign.speechContexts.objects;
+                    campaignSpeechContexts.forEach(campaignSpeechContext => {
+                        if (
+                            "campaignId" in campaignSpeechContext
+                            && "classificationId" in campaignSpeechContext
+                        ) {
+                            let campaignId = campaignSpeechContext.campaignId;
+                            let speechContextId = campaignSpeechContext.classificationId;
+
+                            // Check if already assigned
+                            let campaignSpeechContextFound = searchCampaignSpeechContexts(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                speechContextId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignSpeechContextFound).length > 0) {
+                                if (
+                                    "expansions" in campaignSpeechContext
+                                    && "classificationId" in campaignSpeechContext.expansions
+                                    && "name" in campaignSpeechContext.expansions.classificationId
+                                    && campaignSpeechContext.expansions.classificationId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Speech context (classification) "${campaignSpeechContext.expansions.classificationId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Speech context (classification) ID "${speechContextId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if speech context (classification) exists
+                                    let speechContextFound = getClassificationById(
+                                        nccLocation,
+                                        nccToken,
+                                        speechContextId
+                                    );
+
+                                    // Check if speech context (classification) found
+                                    if (Object.keys(speechContextFound).length > 0) {
+
+                                        // Assign speech context (classification) to campaign
+                                        let campaignSpeechContextCreated = createCampaignSpeechContext(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            speechContextId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignSpeechContextCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignSpeechContextCreated
+                                                && "classificationId" in campaignSpeechContextCreated.expansions
+                                                && "name" in campaignSpeechContextCreated.expansions.classificationId
+                                                && campaignSpeechContextCreated.expansions.classificationId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Speech context (classification) "${campaignSpeechContextCreated.expansions.classificationId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Speech context (classification) ID "${speechContextId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaignSpeechContext
+                                                && "classificationId" in campaignSpeechContext.expansions
+                                                && "name" in campaignSpeechContext.expansions.classificationId
+                                                && campaignSpeechContext.expansions.classificationId.name != ""
+                                            ) {
+                                                errorMessage += `\tSpeech context (classification) "${campaignSpeechContext.expansions.classificationId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Speech context (classification) "${campaignSpeechContext.expansions.classificationId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tSpeech context (classification) ID "${speechContextId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Speech context (classification) ID "${speechContextId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign templates to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaigntemplates
+                if (
+                    "templates" in campaign
+                    && "count" in campaign.templates
+                    && campaign.templates.count > 0
+                ) {
+                    let campaignTemplates = campaign.templates.objects;
+                    campaignTemplates.forEach(campaignTemplate => {
+                        if (
+                            "campaignId" in campaignTemplate
+                            && "templateId" in campaignTemplate
+                        ) {
+                            let campaignId = campaignTemplate.campaignId;
+                            let templateId = campaignTemplate.templateId;
+
+                            // Check if already assigned
+                            let campaignTemplateFound = searchCampaignTemplates(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                templateId
+                            );
+
+                            // Check if found
+                            if (Object.keys(campaignTemplateFound).length > 0) {
+                                if (
+                                    "expansions" in campaignTemplate
+                                    && "templateId" in campaignTemplate.expansions
+                                    && "name" in campaignTemplate.expansions.templateId
+                                    && campaignTemplate.expansions.templateId.name != ""
+                                ) {
+                                    postMessage(`[INFO] Template "${campaignTemplate.expansions.templateId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] Template ID "${templateId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if template exists
+                                    let template = getTemplateById(
+                                        nccLocation,
+                                        nccToken,
+                                        templateId
+                                    );
+
+                                    // Check if template found
+                                    if (Object.keys(template).length > 0) {
+
+                                        // Assign template to campaign
+                                        let campaignTemplateCreated = createCampaignTemplate(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            templateId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(campaignTemplateCreated).length > 0) {
+                                            if (
+                                                "expansions" in campaignTemplateCreated
+                                                && "templateId" in campaignTemplateCreated.expansions
+                                                && "name" in campaignTemplateCreated.expansions.templateId
+                                                && campaignTemplateCreated.expansions.templateId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] Template "${campaignTemplateCreated.expansions.templateId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] Template ID "${templateId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in campaignTemplate
+                                                && "templateId" in campaignTemplate.expansions
+                                                && "name" in campaignTemplate.expansions.templateId
+                                                && campaignTemplate.expansions.templateId.name != ""
+                                            ) {
+                                                errorMessage += `\tTemplate "${campaignTemplate.expansions.templateId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Template "${campaignTemplate.expansions.templateId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tTemplate ID "${templateId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] Template ID "${templateId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        }
+
+        // Assign WhatsApp templates to campaigns
+        if (importData.campaigns.length > 0) {
+
+            let campaigns = importData.campaigns;
+            campaigns.forEach(campaign => {
+
+                // Find campaignwhatsapptemplate
+                if (
+                    "whatsapptemplates" in campaign
+                    && "count" in campaign.whatsapptemplates
+                    && campaign.whatsapptemplates.count > 0
+                ) {
+                    let whatsAppTemplates = campaign.whatsapptemplates.objects;
+                    whatsAppTemplates.forEach(whatsAppTemplate => {
+                        if (
+                            "campaignId" in whatsAppTemplate
+                            && "whatsAppTemplateId" in whatsAppTemplate
+                        ) {
+                            let campaignId = whatsAppTemplate.campaignId;
+                            let whatsAppTemplateId = whatsAppTemplate.whatsAppTemplateId;
+
+                            // Check if already assigned
+                            let whatsAppTemplateFound = searchCampaignWhatsAppTemplates(
+                                nccLocation,
+                                nccToken,
+                                campaignId,
+                                whatsAppTemplateId
+                            );
+
+                            // Check if found
+                            if (Object.keys(whatsAppTemplateFound).length > 0) {
+                                if (
+                                    "expansions" in whatsAppTemplate
+                                    && "whatsAppTemplateId" in whatsAppTemplate.expansions
+                                    && "name" in whatsAppTemplate.expansions.whatsAppTemplateId
+                                    && whatsAppTemplate.expansions.whatsAppTemplateId.name != ""
+                                ) {
+                                    postMessage(`[INFO] WhatsApp template "${whatsAppTemplate.expansions.whatsAppTemplateId.name}" already assigned to campaign "${campaign.name}".`);
+                                } else {
+                                    postMessage(`[INFO] WhatsApp template ID "${whatsAppTemplateId}" already assigned to campaign "${campaign.name}".`);
+                                }
+                            } else {
+
+                                // Check if campaign exists
+                                let campaign = getCampaignById(
+                                    nccLocation,
+                                    nccToken,
+                                    campaignId
+                                );
+
+                                // Check if campaign found
+                                if (Object.keys(campaign).length > 0) {
+
+                                    // Check if WhatsApp template exists
+                                    let whatsAppTemplateFound = getWhatsAppTemplateById(
+                                        nccLocation,
+                                        nccToken,
+                                        whatsAppTemplateId
+                                    );
+
+                                    // Check if WhatsApp template found
+                                    if (Object.keys(whatsAppTemplateFound).length > 0) {
+
+                                        // Assign WhatsApp template to campaign
+                                        let whatsAppTemplateCreated = createCampaignWhatsAppTemplate(
+                                            nccLocation,
+                                            nccToken,
+                                            campaignId,
+                                            whatsAppTemplateId
+                                        );
+
+                                        // Check if created
+                                        if (Object.keys(whatsAppTemplateCreated).length > 0) {
+                                            if (
+                                                "expansions" in whatsAppTemplateCreated
+                                                && "whatsAppTemplateId" in whatsAppTemplateCreated.expansions
+                                                && "name" in whatsAppTemplateCreated.expansions.whatsAppTemplateId
+                                                && whatsAppTemplateCreated.expansions.whatsAppTemplateId.name != ""
+                                            ) {
+                                                postMessage(`[INFO] WhatsApp template "${whatsAppTemplateCreated.expansions.whatsAppTemplateId.name}" assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                postMessage(`[INFO] WhatsApp template ID "${whatsAppTemplateId}" assigned to campaign "${campaign.name}".`);
+                                            }
+                                        } else {
+                                            if (
+                                                "expansions" in whatsAppTemplate
+                                                && "whatsAppTemplateId" in whatsAppTemplate.expansions
+                                                && "name" in whatsAppTemplate.expansions.whatsAppTemplateId
+                                                && whatsAppTemplate.expansions.whatsAppTemplateId.name != ""
+                                            ) {
+                                                errorMessage += `\tWhatsApp template "${whatsAppTemplate.expansions.whatsAppTemplateId.name}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] WhatsApp template "${whatsAppTemplate.expansions.whatsAppTemplateId.name}" not assigned to campaign "${campaign.name}".`);
+                                            } else {
+                                                errorMessage += `\tWhatsApp template ID "${whatsAppTemplateId}" not assigned to campaign "${campaign.name}".\n`;
+                                                postMessage(`[ERROR] WhatsApp template ID "${whatsAppTemplateId}" not assigned to campaign "${campaign.name}".`);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            });
         }
 
         if (errorMessage === "") {
