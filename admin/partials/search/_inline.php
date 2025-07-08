@@ -9,26 +9,26 @@
     data-kt-search-responsive="true"
     data-kt-menu-trigger="auto"
     data-kt-menu-permanent="true"
-    data-kt-menu-placement="bottom-start"
-        >
-            <!--begin::Tablet and mobile search toggle-->
-        <div data-kt-search-element="toggle" class="search-toggle-mobile d-flex d-lg-none align-items-center">
-            <div class="d-flex ">
-                                    <i class="ki-outline ki-magnifier fs-1 fs-1"></i>                            </div>
+    data-kt-menu-placement="bottom-start">
+    <!--begin::Tablet and mobile search toggle-->
+    <div data-kt-search-element="toggle" class="search-toggle-mobile d-flex d-lg-none align-items-center">
+        <div class="d-flex ">
+            <i class="ki-outline ki-magnifier fs-1 fs-1"></i>
         </div>
-        <!--end::Tablet and mobile search toggle-->
-<?php include 'partials/search/partials/_form-inline.php' ?>
+    </div>
+    <!--end::Tablet and mobile search toggle-->
+    <?php include 'partials/search/partials/_form-inline.php' ?>
     <!--begin::Menu-->
     <div data-kt-search-element="content" class="menu menu-sub menu-sub-dropdown py-7 px-7 overflow-hidden w-300px w-md-350px">
         <!--begin::Wrapper-->
         <div data-kt-search-element="wrapper">
-<?php include 'partials/search/partials/_results.php' ?>
-<?php include 'partials/search/partials/_main.php' ?>
-<?php include 'partials/search/partials/_empty.php' ?>
+            <?php include 'partials/search/partials/_results.php' ?>
+            <?php include 'partials/search/partials/_main.php' ?>
+            <?php include 'partials/search/partials/_empty.php' ?>
         </div>
         <!--end::Wrapper-->
-<?php include 'partials/search/partials/_advanced-options.php' ?>
-<?php include 'partials/search/partials/_preferences.php' ?>
+        <?php include 'partials/search/partials/_advanced-options.php' ?>
+        <?php include 'partials/search/partials/_preferences.php' ?>
     </div>
     <!--end::Menu-->
 </div>
