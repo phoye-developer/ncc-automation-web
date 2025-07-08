@@ -6818,7 +6818,10 @@ onmessage = (event) => {
                     updateNestedValues(data[key], lookupObj);
                 } else {
 
-                    if (key == "content") {
+                    if (
+                        key == "content"
+                        || key == "genericQuery"
+                    ) {
                         for (const [from, to] of Object.entries(lookupObj)) {
                             data[key] = data[key].replaceAll(from, to);
                         }
