@@ -106,6 +106,43 @@ var KTImportCampaign = function () {
 		});
 	}
 
+	// Handle bulk options
+	var handleBulkOptions = () => {
+		const options = form.querySelectorAll('[data-kt-modal-bulk="option"]');
+		const nccObjects = form.querySelectorAll('[data-ncc-object="true"]');
+		const changeEvent = new Event('change');
+		options.forEach(option => {
+			option.addEventListener('click', e => {
+				e.preventDefault();
+
+				let action;
+
+				switch (e.target.textContent) {
+					case "Ignore all":
+						action = "ignore";
+						break;
+
+					case "Create all":
+						action = "create";
+						break;
+
+					case "Update all":
+						action = "update";
+						break;
+
+					default:
+						action = "ignore";
+						break;
+				}
+
+				nccObjects.forEach(nccObject => {
+					nccObject.value = action;
+					nccObject.dispatchEvent(changeEvent);
+				});
+			});
+		});
+	}
+
 	var handleForm = function () {
 
 		// Find Review and Submit buttons
@@ -368,6 +405,7 @@ var KTImportCampaign = function () {
 
 			initStepper();
 			initValidation();
+			handleBulkOptions();
 			handleForm();
 		}
 	};
