@@ -52,7 +52,16 @@
                         <div data-kt-stepper-element="content">
                             <!--begin::Wrapper-->
                             <div class="w-75 mx-auto">
-
+                                <!--begin::Input group-->
+                                <div class="d-flex flex-column mb-8 fv-row fv-plugins-icon-container">
+                                    <!--begin::Bulk options-->
+                                    <div class="d-flex flex-stack gap-5 mb-3">
+                                        <button type="button" class="btn btn-light-primary w-100" data-kt-modal-bulk="option">Ignore all</button>
+                                        <button type="button" class="btn btn-light-primary w-100" data-kt-modal-bulk="option">Create all</button>
+                                        <button type="button" class="btn btn-light-primary w-100" data-kt-modal-bulk="option">Update all</button>
+                                    </div>
+                                </div>
+                                <!--end::Input group-->
                                 <!--begin::Input group-->
                                 <div class="mb-8">
                                     <!--begin::Label-->
@@ -73,7 +82,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="business_events">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="business_events">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -95,7 +104,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="campaign_goals">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="campaign_goals">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -117,7 +126,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="campaign_scripts">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="campaign_scripts">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -139,7 +148,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="campaigns">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="campaigns">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -161,7 +170,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="categories">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="categories">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -183,7 +192,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="category_summaries">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="category_summaries">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -205,7 +214,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="classifications">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="classifications">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -227,7 +236,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="dashboards">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="dashboards">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -249,7 +258,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="dial_plans">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="dial_plans">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -271,7 +280,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="dispositions">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="dispositions">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -293,7 +302,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="entities">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="entities">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -315,7 +324,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="field_mappings">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="field_mappings">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -337,7 +346,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="file_servers">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="file_servers">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -359,7 +368,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="filters">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="filters">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -381,7 +390,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="functions">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="functions">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -403,7 +412,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="home_tabs">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="home_tabs">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -425,7 +434,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="music">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="music">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -447,7 +456,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="partitions">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="partitions">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -469,7 +478,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="prompts">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="prompts">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -491,7 +500,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="queues">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="queues">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -513,7 +522,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="reports">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="reports">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -535,7 +544,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="rest_calls">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="rest_calls">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -557,7 +566,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="scorecards">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="scorecards">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -579,7 +588,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="scripts">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="scripts">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -601,7 +610,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="skills">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="skills">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -623,7 +632,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="state_dids">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="state_dids">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -645,7 +654,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="survey_themes">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="survey_themes">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -667,7 +676,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="surveys">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="surveys">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -689,7 +698,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="templates">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="templates">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -711,7 +720,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="time_events">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="time_events">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -733,7 +742,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="user_profiles">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="user_profiles">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -755,7 +764,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="whats_app_templates">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="whats_app_templates">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -777,7 +786,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="widgets">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="widgets">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>
@@ -799,7 +808,7 @@
                                             <!--end::Details-->
                                             <!--begin::Access menu-->
                                             <div class="ms-2 w-125px">
-                                                <select class="form-select form-select-solid form-select-sm" data-control="select2" data-hide-search="true" name="workflows">
+                                                <select class="form-select form-select-solid form-select-sm" data-ncc-object="true" data-control="select2" data-hide-search="true" name="workflows">
                                                     <option value="ignore" selected="selected">Ignore</option>
                                                     <option value="create">Create</option>
                                                     <option value="update">Update</option>

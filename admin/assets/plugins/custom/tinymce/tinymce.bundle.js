@@ -32190,266 +32190,6 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const applyListFormat = (editor, listName, styleValue) => {
-      const cmd = listName === 'UL' ? 'InsertUnorderedList' : 'InsertOrderedList';
-      editor.execCommand(cmd, false, styleValue === false ? null : { 'list-style-type': styleValue });
-    };
-
-    const register$2 = editor => {
-      editor.addCommand('ApplyUnorderedListStyle', (ui, value) => {
-        applyListFormat(editor, 'UL', value['list-style-type']);
-      });
-      editor.addCommand('ApplyOrderedListStyle', (ui, value) => {
-        applyListFormat(editor, 'OL', value['list-style-type']);
-      });
-    };
-
-    const option = name => editor => editor.options.get(name);
-    const register$1 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('advlist_number_styles', {
-        processor: 'string[]',
-        default: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman'.split(',')
-      });
-      registerOption('advlist_bullet_styles', {
-        processor: 'string[]',
-        default: 'default,circle,square'.split(',')
-      });
-    };
-    const getNumberStyles = option('advlist_number_styles');
-    const getBulletStyles = option('advlist_bullet_styles');
-
-    const isNullable = a => a === null || a === undefined;
-    const isNonNullable = a => !isNullable(a);
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    class Optional {
-      constructor(tag, value) {
-        this.tag = tag;
-        this.value = value;
-      }
-      static some(value) {
-        return new Optional(true, value);
-      }
-      static none() {
-        return Optional.singletonNone;
-      }
-      fold(onNone, onSome) {
-        if (this.tag) {
-          return onSome(this.value);
-        } else {
-          return onNone();
-        }
-      }
-      isSome() {
-        return this.tag;
-      }
-      isNone() {
-        return !this.tag;
-      }
-      map(mapper) {
-        if (this.tag) {
-          return Optional.some(mapper(this.value));
-        } else {
-          return Optional.none();
-        }
-      }
-      bind(binder) {
-        if (this.tag) {
-          return binder(this.value);
-        } else {
-          return Optional.none();
-        }
-      }
-      exists(predicate) {
-        return this.tag && predicate(this.value);
-      }
-      forall(predicate) {
-        return !this.tag || predicate(this.value);
-      }
-      filter(predicate) {
-        if (!this.tag || predicate(this.value)) {
-          return this;
-        } else {
-          return Optional.none();
-        }
-      }
-      getOr(replacement) {
-        return this.tag ? this.value : replacement;
-      }
-      or(replacement) {
-        return this.tag ? this : replacement;
-      }
-      getOrThunk(thunk) {
-        return this.tag ? this.value : thunk();
-      }
-      orThunk(thunk) {
-        return this.tag ? this : thunk();
-      }
-      getOrDie(message) {
-        if (!this.tag) {
-          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
-        } else {
-          return this.value;
-        }
-      }
-      static from(value) {
-        return isNonNullable(value) ? Optional.some(value) : Optional.none();
-      }
-      getOrNull() {
-        return this.tag ? this.value : null;
-      }
-      getOrUndefined() {
-        return this.value;
-      }
-      each(worker) {
-        if (this.tag) {
-          worker(this.value);
-        }
-      }
-      toArray() {
-        return this.tag ? [this.value] : [];
-      }
-      toString() {
-        return this.tag ? `some(${ this.value })` : 'none()';
-      }
-    }
-    Optional.singletonNone = new Optional(false);
-
-    const findUntil = (xs, pred, until) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        if (pred(x, i)) {
-          return Optional.some(x);
-        } else if (until(x, i)) {
-          break;
-        }
-      }
-      return Optional.none();
-    };
-
-    const isCustomList = list => /\btox\-/.test(list.className);
-    const isChildOfBody = (editor, elm) => {
-      return editor.dom.isChildOf(elm, editor.getBody());
-    };
-    const matchNodeNames = regex => node => isNonNullable(node) && regex.test(node.nodeName);
-    const isListNode = matchNodeNames(/^(OL|UL|DL)$/);
-    const isTableCellNode = matchNodeNames(/^(TH|TD)$/);
-    const inList = (editor, parents, nodeName) => findUntil(parents, parent => isListNode(parent) && !isCustomList(parent), isTableCellNode).exists(list => list.nodeName === nodeName && isChildOfBody(editor, list));
-    const getSelectedStyleType = editor => {
-      const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
-      const style = editor.dom.getStyle(listElm, 'listStyleType');
-      return Optional.from(style);
-    };
-    const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
-    const isWithinNonEditableList = (editor, element) => {
-      const parentList = editor.dom.getParent(element, 'ol,ul,dl');
-      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
-    };
-    const setNodeChangeHandler = (editor, nodeChangeHandler) => {
-      const initialNode = editor.selection.getNode();
-      nodeChangeHandler({
-        parents: editor.dom.getParents(initialNode),
-        element: initialNode
-      });
-      editor.on('NodeChange', nodeChangeHandler);
-      return () => editor.off('NodeChange', nodeChangeHandler);
-    };
-
-    const styleValueToText = styleValue => {
-      return styleValue.replace(/\-/g, ' ').replace(/\b\w/g, chr => {
-        return chr.toUpperCase();
-      });
-    };
-    const normalizeStyleValue = styleValue => isNullable(styleValue) || styleValue === 'default' ? '' : styleValue;
-    const makeSetupHandler = (editor, nodeName) => api => {
-      const updateButtonState = (editor, parents) => {
-        const element = editor.selection.getStart(true);
-        api.setActive(inList(editor, parents, nodeName));
-        api.setEnabled(!isWithinNonEditableList(editor, element));
-      };
-      const nodeChangeHandler = e => updateButtonState(editor, e.parents);
-      return setNodeChangeHandler(editor, nodeChangeHandler);
-    };
-    const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
-      editor.ui.registry.addSplitButton(id, {
-        tooltip,
-        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
-        presets: 'listpreview',
-        columns: 3,
-        fetch: callback => {
-          const items = global.map(styles, styleValue => {
-            const iconStyle = nodeName === 'OL' ? 'num' : 'bull';
-            const iconName = styleValue === 'disc' || styleValue === 'decimal' ? 'default' : styleValue;
-            const itemValue = normalizeStyleValue(styleValue);
-            const displayText = styleValueToText(styleValue);
-            return {
-              type: 'choiceitem',
-              value: itemValue,
-              icon: 'list-' + iconStyle + '-' + iconName,
-              text: displayText
-            };
-          });
-          callback(items);
-        },
-        onAction: () => editor.execCommand(cmd),
-        onItemAction: (_splitButtonApi, value) => {
-          applyListFormat(editor, nodeName, value);
-        },
-        select: value => {
-          const listStyleType = getSelectedStyleType(editor);
-          return listStyleType.map(listStyle => value === listStyle).getOr(false);
-        },
-        onSetup: makeSetupHandler(editor, nodeName)
-      });
-    };
-    const addButton = (editor, id, tooltip, cmd, nodeName, styleValue) => {
-      editor.ui.registry.addToggleButton(id, {
-        active: false,
-        tooltip,
-        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
-        onSetup: makeSetupHandler(editor, nodeName),
-        onAction: () => editor.queryCommandState(cmd) || styleValue === '' ? editor.execCommand(cmd) : applyListFormat(editor, nodeName, styleValue)
-      });
-    };
-    const addControl = (editor, id, tooltip, cmd, nodeName, styles) => {
-      if (styles.length > 1) {
-        addSplitButton(editor, id, tooltip, cmd, nodeName, styles);
-      } else {
-        addButton(editor, id, tooltip, cmd, nodeName, normalizeStyleValue(styles[0]));
-      }
-    };
-    const register = editor => {
-      addControl(editor, 'numlist', 'Numbered list', 'InsertOrderedList', 'OL', getNumberStyles(editor));
-      addControl(editor, 'bullist', 'Bullet list', 'InsertUnorderedList', 'UL', getBulletStyles(editor));
-    };
-
-    var Plugin = () => {
-      global$1.add('advlist', editor => {
-        if (editor.hasPlugin('lists')) {
-          register$1(editor);
-          register(editor);
-          register$2(editor);
-        } else {
-          console.error('Please use the Lists plugin together with the List Styles plugin.');
-        }
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
     var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
     const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
@@ -33494,6 +33234,266 @@ tinymce.IconManager.add('default', {
         setup$1(editor);
         setup$2(editor);
         setup(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const applyListFormat = (editor, listName, styleValue) => {
+      const cmd = listName === 'UL' ? 'InsertUnorderedList' : 'InsertOrderedList';
+      editor.execCommand(cmd, false, styleValue === false ? null : { 'list-style-type': styleValue });
+    };
+
+    const register$2 = editor => {
+      editor.addCommand('ApplyUnorderedListStyle', (ui, value) => {
+        applyListFormat(editor, 'UL', value['list-style-type']);
+      });
+      editor.addCommand('ApplyOrderedListStyle', (ui, value) => {
+        applyListFormat(editor, 'OL', value['list-style-type']);
+      });
+    };
+
+    const option = name => editor => editor.options.get(name);
+    const register$1 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('advlist_number_styles', {
+        processor: 'string[]',
+        default: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman'.split(',')
+      });
+      registerOption('advlist_bullet_styles', {
+        processor: 'string[]',
+        default: 'default,circle,square'.split(',')
+      });
+    };
+    const getNumberStyles = option('advlist_number_styles');
+    const getBulletStyles = option('advlist_bullet_styles');
+
+    const isNullable = a => a === null || a === undefined;
+    const isNonNullable = a => !isNullable(a);
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    class Optional {
+      constructor(tag, value) {
+        this.tag = tag;
+        this.value = value;
+      }
+      static some(value) {
+        return new Optional(true, value);
+      }
+      static none() {
+        return Optional.singletonNone;
+      }
+      fold(onNone, onSome) {
+        if (this.tag) {
+          return onSome(this.value);
+        } else {
+          return onNone();
+        }
+      }
+      isSome() {
+        return this.tag;
+      }
+      isNone() {
+        return !this.tag;
+      }
+      map(mapper) {
+        if (this.tag) {
+          return Optional.some(mapper(this.value));
+        } else {
+          return Optional.none();
+        }
+      }
+      bind(binder) {
+        if (this.tag) {
+          return binder(this.value);
+        } else {
+          return Optional.none();
+        }
+      }
+      exists(predicate) {
+        return this.tag && predicate(this.value);
+      }
+      forall(predicate) {
+        return !this.tag || predicate(this.value);
+      }
+      filter(predicate) {
+        if (!this.tag || predicate(this.value)) {
+          return this;
+        } else {
+          return Optional.none();
+        }
+      }
+      getOr(replacement) {
+        return this.tag ? this.value : replacement;
+      }
+      or(replacement) {
+        return this.tag ? this : replacement;
+      }
+      getOrThunk(thunk) {
+        return this.tag ? this.value : thunk();
+      }
+      orThunk(thunk) {
+        return this.tag ? this : thunk();
+      }
+      getOrDie(message) {
+        if (!this.tag) {
+          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+        } else {
+          return this.value;
+        }
+      }
+      static from(value) {
+        return isNonNullable(value) ? Optional.some(value) : Optional.none();
+      }
+      getOrNull() {
+        return this.tag ? this.value : null;
+      }
+      getOrUndefined() {
+        return this.value;
+      }
+      each(worker) {
+        if (this.tag) {
+          worker(this.value);
+        }
+      }
+      toArray() {
+        return this.tag ? [this.value] : [];
+      }
+      toString() {
+        return this.tag ? `some(${ this.value })` : 'none()';
+      }
+    }
+    Optional.singletonNone = new Optional(false);
+
+    const findUntil = (xs, pred, until) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        if (pred(x, i)) {
+          return Optional.some(x);
+        } else if (until(x, i)) {
+          break;
+        }
+      }
+      return Optional.none();
+    };
+
+    const isCustomList = list => /\btox\-/.test(list.className);
+    const isChildOfBody = (editor, elm) => {
+      return editor.dom.isChildOf(elm, editor.getBody());
+    };
+    const matchNodeNames = regex => node => isNonNullable(node) && regex.test(node.nodeName);
+    const isListNode = matchNodeNames(/^(OL|UL|DL)$/);
+    const isTableCellNode = matchNodeNames(/^(TH|TD)$/);
+    const inList = (editor, parents, nodeName) => findUntil(parents, parent => isListNode(parent) && !isCustomList(parent), isTableCellNode).exists(list => list.nodeName === nodeName && isChildOfBody(editor, list));
+    const getSelectedStyleType = editor => {
+      const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
+      const style = editor.dom.getStyle(listElm, 'listStyleType');
+      return Optional.from(style);
+    };
+    const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
+    const isWithinNonEditableList = (editor, element) => {
+      const parentList = editor.dom.getParent(element, 'ol,ul,dl');
+      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
+    };
+    const setNodeChangeHandler = (editor, nodeChangeHandler) => {
+      const initialNode = editor.selection.getNode();
+      nodeChangeHandler({
+        parents: editor.dom.getParents(initialNode),
+        element: initialNode
+      });
+      editor.on('NodeChange', nodeChangeHandler);
+      return () => editor.off('NodeChange', nodeChangeHandler);
+    };
+
+    const styleValueToText = styleValue => {
+      return styleValue.replace(/\-/g, ' ').replace(/\b\w/g, chr => {
+        return chr.toUpperCase();
+      });
+    };
+    const normalizeStyleValue = styleValue => isNullable(styleValue) || styleValue === 'default' ? '' : styleValue;
+    const makeSetupHandler = (editor, nodeName) => api => {
+      const updateButtonState = (editor, parents) => {
+        const element = editor.selection.getStart(true);
+        api.setActive(inList(editor, parents, nodeName));
+        api.setEnabled(!isWithinNonEditableList(editor, element));
+      };
+      const nodeChangeHandler = e => updateButtonState(editor, e.parents);
+      return setNodeChangeHandler(editor, nodeChangeHandler);
+    };
+    const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
+      editor.ui.registry.addSplitButton(id, {
+        tooltip,
+        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
+        presets: 'listpreview',
+        columns: 3,
+        fetch: callback => {
+          const items = global.map(styles, styleValue => {
+            const iconStyle = nodeName === 'OL' ? 'num' : 'bull';
+            const iconName = styleValue === 'disc' || styleValue === 'decimal' ? 'default' : styleValue;
+            const itemValue = normalizeStyleValue(styleValue);
+            const displayText = styleValueToText(styleValue);
+            return {
+              type: 'choiceitem',
+              value: itemValue,
+              icon: 'list-' + iconStyle + '-' + iconName,
+              text: displayText
+            };
+          });
+          callback(items);
+        },
+        onAction: () => editor.execCommand(cmd),
+        onItemAction: (_splitButtonApi, value) => {
+          applyListFormat(editor, nodeName, value);
+        },
+        select: value => {
+          const listStyleType = getSelectedStyleType(editor);
+          return listStyleType.map(listStyle => value === listStyle).getOr(false);
+        },
+        onSetup: makeSetupHandler(editor, nodeName)
+      });
+    };
+    const addButton = (editor, id, tooltip, cmd, nodeName, styleValue) => {
+      editor.ui.registry.addToggleButton(id, {
+        active: false,
+        tooltip,
+        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
+        onSetup: makeSetupHandler(editor, nodeName),
+        onAction: () => editor.queryCommandState(cmd) || styleValue === '' ? editor.execCommand(cmd) : applyListFormat(editor, nodeName, styleValue)
+      });
+    };
+    const addControl = (editor, id, tooltip, cmd, nodeName, styles) => {
+      if (styles.length > 1) {
+        addSplitButton(editor, id, tooltip, cmd, nodeName, styles);
+      } else {
+        addButton(editor, id, tooltip, cmd, nodeName, normalizeStyleValue(styles[0]));
+      }
+    };
+    const register = editor => {
+      addControl(editor, 'numlist', 'Numbered list', 'InsertOrderedList', 'OL', getNumberStyles(editor));
+      addControl(editor, 'bullist', 'Bullet list', 'InsertUnorderedList', 'UL', getBulletStyles(editor));
+    };
+
+    var Plugin = () => {
+      global$1.add('advlist', editor => {
+        if (editor.hasPlugin('lists')) {
+          register$1(editor);
+          register(editor);
+          register$2(editor);
+        } else {
+          console.error('Please use the Lists plugin together with the List Styles plugin.');
+        }
       });
     };
 
@@ -41750,352 +41750,6 @@ tinymce.IconManager.add('default', {
 
     var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
-    const hasProto = (v, constructor, predicate) => {
-      var _a;
-      if (predicate(v, constructor.prototype)) {
-        return true;
-      } else {
-        return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
-      }
-    };
-    const typeOf = x => {
-      const t = typeof x;
-      if (x === null) {
-        return 'null';
-      } else if (t === 'object' && Array.isArray(x)) {
-        return 'array';
-      } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
-        return 'string';
-      } else {
-        return t;
-      }
-    };
-    const isType = type => value => typeOf(value) === type;
-    const isSimpleType = type => value => typeof value === type;
-    const isString = isType('string');
-    const isObject = isType('object');
-    const isArray = isType('array');
-    const isFunction = isSimpleType('function');
-
-    var global$3 = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
-
-    var global$2 = tinymce.util.Tools.resolve('tinymce.EditorManager');
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.Env');
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    const option = name => editor => editor.options.get(name);
-    const register = editor => {
-      const registerOption = editor.options.register;
-      const filterProcessor = value => isString(value) || isFunction(value) || isObject(value);
-      registerOption('importcss_merge_classes', {
-        processor: 'boolean',
-        default: true
-      });
-      registerOption('importcss_exclusive', {
-        processor: 'boolean',
-        default: true
-      });
-      registerOption('importcss_selector_converter', { processor: 'function' });
-      registerOption('importcss_selector_filter', { processor: filterProcessor });
-      registerOption('importcss_file_filter', { processor: filterProcessor });
-      registerOption('importcss_groups', { processor: 'object[]' });
-      registerOption('importcss_append', {
-        processor: 'boolean',
-        default: false
-      });
-    };
-    const shouldMergeClasses = option('importcss_merge_classes');
-    const shouldImportExclusive = option('importcss_exclusive');
-    const getSelectorConverter = option('importcss_selector_converter');
-    const getSelectorFilter = option('importcss_selector_filter');
-    const getCssGroups = option('importcss_groups');
-    const shouldAppend = option('importcss_append');
-    const getFileFilter = option('importcss_file_filter');
-    const getSkin = option('skin');
-    const getSkinUrl = option('skin_url');
-
-    const nativePush = Array.prototype.push;
-    const map = (xs, f) => {
-      const len = xs.length;
-      const r = new Array(len);
-      for (let i = 0; i < len; i++) {
-        const x = xs[i];
-        r[i] = f(x, i);
-      }
-      return r;
-    };
-    const flatten = xs => {
-      const r = [];
-      for (let i = 0, len = xs.length; i < len; ++i) {
-        if (!isArray(xs[i])) {
-          throw new Error('Arr.flatten item ' + i + ' was not an array, input: ' + xs);
-        }
-        nativePush.apply(r, xs[i]);
-      }
-      return r;
-    };
-    const bind = (xs, f) => flatten(map(xs, f));
-
-    const generate = () => {
-      const ungroupedOrder = [];
-      const groupOrder = [];
-      const groups = {};
-      const addItemToGroup = (groupTitle, itemInfo) => {
-        if (groups[groupTitle]) {
-          groups[groupTitle].push(itemInfo);
-        } else {
-          groupOrder.push(groupTitle);
-          groups[groupTitle] = [itemInfo];
-        }
-      };
-      const addItem = itemInfo => {
-        ungroupedOrder.push(itemInfo);
-      };
-      const toFormats = () => {
-        const groupItems = bind(groupOrder, g => {
-          const items = groups[g];
-          return items.length === 0 ? [] : [{
-              title: g,
-              items
-            }];
-        });
-        return groupItems.concat(ungroupedOrder);
-      };
-      return {
-        addItemToGroup,
-        addItem,
-        toFormats
-      };
-    };
-
-    const internalEditorStyle = /^\.(?:ephox|tiny-pageembed|mce)(?:[.-]+\w+)+$/;
-    const removeCacheSuffix = url => {
-      const cacheSuffix = global$1.cacheSuffix;
-      if (isString(url)) {
-        url = url.replace('?' + cacheSuffix, '').replace('&' + cacheSuffix, '');
-      }
-      return url;
-    };
-    const isSkinContentCss = (editor, href) => {
-      const skin = getSkin(editor);
-      if (skin) {
-        const skinUrlBase = getSkinUrl(editor);
-        const skinUrl = skinUrlBase ? editor.documentBaseURI.toAbsolute(skinUrlBase) : global$2.baseURL + '/skins/ui/' + skin;
-        const contentSkinUrlPart = global$2.baseURL + '/skins/content/';
-        const suffix = editor.editorManager.suffix;
-        return href === skinUrl + '/content' + (editor.inline ? '.inline' : '') + `${ suffix }.css` || href.indexOf(contentSkinUrlPart) !== -1;
-      }
-      return false;
-    };
-    const compileFilter = filter => {
-      if (isString(filter)) {
-        return value => {
-          return value.indexOf(filter) !== -1;
-        };
-      } else if (filter instanceof RegExp) {
-        return value => {
-          return filter.test(value);
-        };
-      }
-      return filter;
-    };
-    const isCssImportRule = rule => rule.styleSheet;
-    const isCssPageRule = rule => rule.selectorText;
-    const getSelectors = (editor, doc, fileFilter) => {
-      const selectors = [];
-      const contentCSSUrls = {};
-      const append = (styleSheet, imported) => {
-        let href = styleSheet.href;
-        let rules;
-        href = removeCacheSuffix(href);
-        if (!href || fileFilter && !fileFilter(href, imported) || isSkinContentCss(editor, href)) {
-          return;
-        }
-        global.each(styleSheet.imports, styleSheet => {
-          append(styleSheet, true);
-        });
-        try {
-          rules = styleSheet.cssRules || styleSheet.rules;
-        } catch (e) {
-        }
-        global.each(rules, cssRule => {
-          if (isCssImportRule(cssRule) && cssRule.styleSheet) {
-            append(cssRule.styleSheet, true);
-          } else if (isCssPageRule(cssRule)) {
-            global.each(cssRule.selectorText.split(','), selector => {
-              selectors.push(global.trim(selector));
-            });
-          }
-        });
-      };
-      global.each(editor.contentCSS, url => {
-        contentCSSUrls[url] = true;
-      });
-      if (!fileFilter) {
-        fileFilter = (href, imported) => {
-          return imported || contentCSSUrls[href];
-        };
-      }
-      try {
-        global.each(doc.styleSheets, styleSheet => {
-          append(styleSheet);
-        });
-      } catch (e) {
-      }
-      return selectors;
-    };
-    const defaultConvertSelectorToFormat = (editor, selectorText) => {
-      let format = {};
-      const selector = /^(?:([a-z0-9\-_]+))?(\.[a-z0-9_\-\.]+)$/i.exec(selectorText);
-      if (!selector) {
-        return;
-      }
-      const elementName = selector[1];
-      const classes = selector[2].substr(1).split('.').join(' ');
-      const inlineSelectorElements = global.makeMap('a,img');
-      if (selector[1]) {
-        format = { title: selectorText };
-        if (editor.schema.getTextBlockElements()[elementName]) {
-          format.block = elementName;
-        } else if (editor.schema.getBlockElements()[elementName] || inlineSelectorElements[elementName.toLowerCase()]) {
-          format.selector = elementName;
-        } else {
-          format.inline = elementName;
-        }
-      } else if (selector[2]) {
-        format = {
-          inline: 'span',
-          title: selectorText.substr(1),
-          classes
-        };
-      }
-      if (shouldMergeClasses(editor)) {
-        format.classes = classes;
-      } else {
-        format.attributes = { class: classes };
-      }
-      return format;
-    };
-    const getGroupsBySelector = (groups, selector) => {
-      return global.grep(groups, group => {
-        return !group.filter || group.filter(selector);
-      });
-    };
-    const compileUserDefinedGroups = groups => {
-      return global.map(groups, group => {
-        return global.extend({}, group, {
-          original: group,
-          selectors: {},
-          filter: compileFilter(group.filter)
-        });
-      });
-    };
-    const isExclusiveMode = (editor, group) => {
-      return group === null || shouldImportExclusive(editor);
-    };
-    const isUniqueSelector = (editor, selector, group, globallyUniqueSelectors) => {
-      return !(isExclusiveMode(editor, group) ? selector in globallyUniqueSelectors : selector in group.selectors);
-    };
-    const markUniqueSelector = (editor, selector, group, globallyUniqueSelectors) => {
-      if (isExclusiveMode(editor, group)) {
-        globallyUniqueSelectors[selector] = true;
-      } else {
-        group.selectors[selector] = true;
-      }
-    };
-    const convertSelectorToFormat = (editor, plugin, selector, group) => {
-      let selectorConverter;
-      const converter = getSelectorConverter(editor);
-      if (group && group.selector_converter) {
-        selectorConverter = group.selector_converter;
-      } else if (converter) {
-        selectorConverter = converter;
-      } else {
-        selectorConverter = () => {
-          return defaultConvertSelectorToFormat(editor, selector);
-        };
-      }
-      return selectorConverter.call(plugin, selector, group);
-    };
-    const setup = editor => {
-      editor.on('init', () => {
-        const model = generate();
-        const globallyUniqueSelectors = {};
-        const selectorFilter = compileFilter(getSelectorFilter(editor));
-        const groups = compileUserDefinedGroups(getCssGroups(editor));
-        const processSelector = (selector, group) => {
-          if (isUniqueSelector(editor, selector, group, globallyUniqueSelectors)) {
-            markUniqueSelector(editor, selector, group, globallyUniqueSelectors);
-            const format = convertSelectorToFormat(editor, editor.plugins.importcss, selector, group);
-            if (format) {
-              const formatName = format.name || global$3.DOM.uniqueId();
-              editor.formatter.register(formatName, format);
-              return {
-                title: format.title,
-                format: formatName
-              };
-            }
-          }
-          return null;
-        };
-        global.each(getSelectors(editor, editor.getDoc(), compileFilter(getFileFilter(editor))), selector => {
-          if (!internalEditorStyle.test(selector)) {
-            if (!selectorFilter || selectorFilter(selector)) {
-              const selectorGroups = getGroupsBySelector(groups, selector);
-              if (selectorGroups.length > 0) {
-                global.each(selectorGroups, group => {
-                  const menuItem = processSelector(selector, group);
-                  if (menuItem) {
-                    model.addItemToGroup(group.title, menuItem);
-                  }
-                });
-              } else {
-                const menuItem = processSelector(selector, null);
-                if (menuItem) {
-                  model.addItem(menuItem);
-                }
-              }
-            }
-          }
-        });
-        const items = model.toFormats();
-        editor.dispatch('addStyleModifications', {
-          items,
-          replace: !shouldAppend(editor)
-        });
-      });
-    };
-
-    const get = editor => {
-      const convertSelectorToFormat = selectorText => {
-        return defaultConvertSelectorToFormat(editor, selectorText);
-      };
-      return { convertSelectorToFormat };
-    };
-
-    var Plugin = () => {
-      global$4.add('importcss', editor => {
-        register(editor);
-        setup(editor);
-        return get(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
     const getPrototypeOf = Object.getPrototypeOf;
     const hasProto = (v, constructor, predicate) => {
       var _a;
@@ -43589,6 +43243,352 @@ tinymce.IconManager.add('default', {
         setup(editor);
         register(editor);
         register$1(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const hasProto = (v, constructor, predicate) => {
+      var _a;
+      if (predicate(v, constructor.prototype)) {
+        return true;
+      } else {
+        return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
+      }
+    };
+    const typeOf = x => {
+      const t = typeof x;
+      if (x === null) {
+        return 'null';
+      } else if (t === 'object' && Array.isArray(x)) {
+        return 'array';
+      } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
+        return 'string';
+      } else {
+        return t;
+      }
+    };
+    const isType = type => value => typeOf(value) === type;
+    const isSimpleType = type => value => typeof value === type;
+    const isString = isType('string');
+    const isObject = isType('object');
+    const isArray = isType('array');
+    const isFunction = isSimpleType('function');
+
+    var global$3 = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
+
+    var global$2 = tinymce.util.Tools.resolve('tinymce.EditorManager');
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.Env');
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    const option = name => editor => editor.options.get(name);
+    const register = editor => {
+      const registerOption = editor.options.register;
+      const filterProcessor = value => isString(value) || isFunction(value) || isObject(value);
+      registerOption('importcss_merge_classes', {
+        processor: 'boolean',
+        default: true
+      });
+      registerOption('importcss_exclusive', {
+        processor: 'boolean',
+        default: true
+      });
+      registerOption('importcss_selector_converter', { processor: 'function' });
+      registerOption('importcss_selector_filter', { processor: filterProcessor });
+      registerOption('importcss_file_filter', { processor: filterProcessor });
+      registerOption('importcss_groups', { processor: 'object[]' });
+      registerOption('importcss_append', {
+        processor: 'boolean',
+        default: false
+      });
+    };
+    const shouldMergeClasses = option('importcss_merge_classes');
+    const shouldImportExclusive = option('importcss_exclusive');
+    const getSelectorConverter = option('importcss_selector_converter');
+    const getSelectorFilter = option('importcss_selector_filter');
+    const getCssGroups = option('importcss_groups');
+    const shouldAppend = option('importcss_append');
+    const getFileFilter = option('importcss_file_filter');
+    const getSkin = option('skin');
+    const getSkinUrl = option('skin_url');
+
+    const nativePush = Array.prototype.push;
+    const map = (xs, f) => {
+      const len = xs.length;
+      const r = new Array(len);
+      for (let i = 0; i < len; i++) {
+        const x = xs[i];
+        r[i] = f(x, i);
+      }
+      return r;
+    };
+    const flatten = xs => {
+      const r = [];
+      for (let i = 0, len = xs.length; i < len; ++i) {
+        if (!isArray(xs[i])) {
+          throw new Error('Arr.flatten item ' + i + ' was not an array, input: ' + xs);
+        }
+        nativePush.apply(r, xs[i]);
+      }
+      return r;
+    };
+    const bind = (xs, f) => flatten(map(xs, f));
+
+    const generate = () => {
+      const ungroupedOrder = [];
+      const groupOrder = [];
+      const groups = {};
+      const addItemToGroup = (groupTitle, itemInfo) => {
+        if (groups[groupTitle]) {
+          groups[groupTitle].push(itemInfo);
+        } else {
+          groupOrder.push(groupTitle);
+          groups[groupTitle] = [itemInfo];
+        }
+      };
+      const addItem = itemInfo => {
+        ungroupedOrder.push(itemInfo);
+      };
+      const toFormats = () => {
+        const groupItems = bind(groupOrder, g => {
+          const items = groups[g];
+          return items.length === 0 ? [] : [{
+              title: g,
+              items
+            }];
+        });
+        return groupItems.concat(ungroupedOrder);
+      };
+      return {
+        addItemToGroup,
+        addItem,
+        toFormats
+      };
+    };
+
+    const internalEditorStyle = /^\.(?:ephox|tiny-pageembed|mce)(?:[.-]+\w+)+$/;
+    const removeCacheSuffix = url => {
+      const cacheSuffix = global$1.cacheSuffix;
+      if (isString(url)) {
+        url = url.replace('?' + cacheSuffix, '').replace('&' + cacheSuffix, '');
+      }
+      return url;
+    };
+    const isSkinContentCss = (editor, href) => {
+      const skin = getSkin(editor);
+      if (skin) {
+        const skinUrlBase = getSkinUrl(editor);
+        const skinUrl = skinUrlBase ? editor.documentBaseURI.toAbsolute(skinUrlBase) : global$2.baseURL + '/skins/ui/' + skin;
+        const contentSkinUrlPart = global$2.baseURL + '/skins/content/';
+        const suffix = editor.editorManager.suffix;
+        return href === skinUrl + '/content' + (editor.inline ? '.inline' : '') + `${ suffix }.css` || href.indexOf(contentSkinUrlPart) !== -1;
+      }
+      return false;
+    };
+    const compileFilter = filter => {
+      if (isString(filter)) {
+        return value => {
+          return value.indexOf(filter) !== -1;
+        };
+      } else if (filter instanceof RegExp) {
+        return value => {
+          return filter.test(value);
+        };
+      }
+      return filter;
+    };
+    const isCssImportRule = rule => rule.styleSheet;
+    const isCssPageRule = rule => rule.selectorText;
+    const getSelectors = (editor, doc, fileFilter) => {
+      const selectors = [];
+      const contentCSSUrls = {};
+      const append = (styleSheet, imported) => {
+        let href = styleSheet.href;
+        let rules;
+        href = removeCacheSuffix(href);
+        if (!href || fileFilter && !fileFilter(href, imported) || isSkinContentCss(editor, href)) {
+          return;
+        }
+        global.each(styleSheet.imports, styleSheet => {
+          append(styleSheet, true);
+        });
+        try {
+          rules = styleSheet.cssRules || styleSheet.rules;
+        } catch (e) {
+        }
+        global.each(rules, cssRule => {
+          if (isCssImportRule(cssRule) && cssRule.styleSheet) {
+            append(cssRule.styleSheet, true);
+          } else if (isCssPageRule(cssRule)) {
+            global.each(cssRule.selectorText.split(','), selector => {
+              selectors.push(global.trim(selector));
+            });
+          }
+        });
+      };
+      global.each(editor.contentCSS, url => {
+        contentCSSUrls[url] = true;
+      });
+      if (!fileFilter) {
+        fileFilter = (href, imported) => {
+          return imported || contentCSSUrls[href];
+        };
+      }
+      try {
+        global.each(doc.styleSheets, styleSheet => {
+          append(styleSheet);
+        });
+      } catch (e) {
+      }
+      return selectors;
+    };
+    const defaultConvertSelectorToFormat = (editor, selectorText) => {
+      let format = {};
+      const selector = /^(?:([a-z0-9\-_]+))?(\.[a-z0-9_\-\.]+)$/i.exec(selectorText);
+      if (!selector) {
+        return;
+      }
+      const elementName = selector[1];
+      const classes = selector[2].substr(1).split('.').join(' ');
+      const inlineSelectorElements = global.makeMap('a,img');
+      if (selector[1]) {
+        format = { title: selectorText };
+        if (editor.schema.getTextBlockElements()[elementName]) {
+          format.block = elementName;
+        } else if (editor.schema.getBlockElements()[elementName] || inlineSelectorElements[elementName.toLowerCase()]) {
+          format.selector = elementName;
+        } else {
+          format.inline = elementName;
+        }
+      } else if (selector[2]) {
+        format = {
+          inline: 'span',
+          title: selectorText.substr(1),
+          classes
+        };
+      }
+      if (shouldMergeClasses(editor)) {
+        format.classes = classes;
+      } else {
+        format.attributes = { class: classes };
+      }
+      return format;
+    };
+    const getGroupsBySelector = (groups, selector) => {
+      return global.grep(groups, group => {
+        return !group.filter || group.filter(selector);
+      });
+    };
+    const compileUserDefinedGroups = groups => {
+      return global.map(groups, group => {
+        return global.extend({}, group, {
+          original: group,
+          selectors: {},
+          filter: compileFilter(group.filter)
+        });
+      });
+    };
+    const isExclusiveMode = (editor, group) => {
+      return group === null || shouldImportExclusive(editor);
+    };
+    const isUniqueSelector = (editor, selector, group, globallyUniqueSelectors) => {
+      return !(isExclusiveMode(editor, group) ? selector in globallyUniqueSelectors : selector in group.selectors);
+    };
+    const markUniqueSelector = (editor, selector, group, globallyUniqueSelectors) => {
+      if (isExclusiveMode(editor, group)) {
+        globallyUniqueSelectors[selector] = true;
+      } else {
+        group.selectors[selector] = true;
+      }
+    };
+    const convertSelectorToFormat = (editor, plugin, selector, group) => {
+      let selectorConverter;
+      const converter = getSelectorConverter(editor);
+      if (group && group.selector_converter) {
+        selectorConverter = group.selector_converter;
+      } else if (converter) {
+        selectorConverter = converter;
+      } else {
+        selectorConverter = () => {
+          return defaultConvertSelectorToFormat(editor, selector);
+        };
+      }
+      return selectorConverter.call(plugin, selector, group);
+    };
+    const setup = editor => {
+      editor.on('init', () => {
+        const model = generate();
+        const globallyUniqueSelectors = {};
+        const selectorFilter = compileFilter(getSelectorFilter(editor));
+        const groups = compileUserDefinedGroups(getCssGroups(editor));
+        const processSelector = (selector, group) => {
+          if (isUniqueSelector(editor, selector, group, globallyUniqueSelectors)) {
+            markUniqueSelector(editor, selector, group, globallyUniqueSelectors);
+            const format = convertSelectorToFormat(editor, editor.plugins.importcss, selector, group);
+            if (format) {
+              const formatName = format.name || global$3.DOM.uniqueId();
+              editor.formatter.register(formatName, format);
+              return {
+                title: format.title,
+                format: formatName
+              };
+            }
+          }
+          return null;
+        };
+        global.each(getSelectors(editor, editor.getDoc(), compileFilter(getFileFilter(editor))), selector => {
+          if (!internalEditorStyle.test(selector)) {
+            if (!selectorFilter || selectorFilter(selector)) {
+              const selectorGroups = getGroupsBySelector(groups, selector);
+              if (selectorGroups.length > 0) {
+                global.each(selectorGroups, group => {
+                  const menuItem = processSelector(selector, group);
+                  if (menuItem) {
+                    model.addItemToGroup(group.title, menuItem);
+                  }
+                });
+              } else {
+                const menuItem = processSelector(selector, null);
+                if (menuItem) {
+                  model.addItem(menuItem);
+                }
+              }
+            }
+          }
+        });
+        const items = model.toFormats();
+        editor.dispatch('addStyleModifications', {
+          items,
+          replace: !shouldAppend(editor)
+        });
+      });
+    };
+
+    const get = editor => {
+      const convertSelectorToFormat = selectorText => {
+        return defaultConvertSelectorToFormat(editor, selectorText);
+      };
+      return { convertSelectorToFormat };
+    };
+
+    var Plugin = () => {
+      global$4.add('importcss', editor => {
+        register(editor);
+        setup(editor);
+        return get(editor);
       });
     };
 
@@ -48517,124 +48517,6 @@ tinymce.IconManager.add('default', {
 
     var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
-    var global = tinymce.util.Tools.resolve('tinymce.Env');
-
-    const option = name => editor => editor.options.get(name);
-    const register$2 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('pagebreak_separator', {
-        processor: 'string',
-        default: '<!-- pagebreak -->'
-      });
-      registerOption('pagebreak_split_block', {
-        processor: 'boolean',
-        default: false
-      });
-    };
-    const getSeparatorHtml = option('pagebreak_separator');
-    const shouldSplitBlock = option('pagebreak_split_block');
-
-    const pageBreakClass = 'mce-pagebreak';
-    const getPlaceholderHtml = shouldSplitBlock => {
-      const html = `<img src="${ global.transparentSrc }" class="${ pageBreakClass }" data-mce-resize="false" data-mce-placeholder />`;
-      return shouldSplitBlock ? `<p>${ html }</p>` : html;
-    };
-    const setup$1 = editor => {
-      const separatorHtml = getSeparatorHtml(editor);
-      const shouldSplitBlock$1 = () => shouldSplitBlock(editor);
-      const pageBreakSeparatorRegExp = new RegExp(separatorHtml.replace(/[\?\.\*\[\]\(\)\{\}\+\^\$\:]/g, a => {
-        return '\\' + a;
-      }), 'gi');
-      editor.on('BeforeSetContent', e => {
-        e.content = e.content.replace(pageBreakSeparatorRegExp, getPlaceholderHtml(shouldSplitBlock$1()));
-      });
-      editor.on('PreInit', () => {
-        editor.serializer.addNodeFilter('img', nodes => {
-          let i = nodes.length, node, className;
-          while (i--) {
-            node = nodes[i];
-            className = node.attr('class');
-            if (className && className.indexOf(pageBreakClass) !== -1) {
-              const parentNode = node.parent;
-              if (parentNode && editor.schema.getBlockElements()[parentNode.name] && shouldSplitBlock$1()) {
-                parentNode.type = 3;
-                parentNode.value = separatorHtml;
-                parentNode.raw = true;
-                node.remove();
-                continue;
-              }
-              node.type = 3;
-              node.value = separatorHtml;
-              node.raw = true;
-            }
-          }
-        });
-      });
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mcePageBreak', () => {
-        editor.insertContent(getPlaceholderHtml(shouldSplitBlock(editor)));
-      });
-    };
-
-    const setup = editor => {
-      editor.on('ResolveName', e => {
-        if (e.target.nodeName === 'IMG' && editor.dom.hasClass(e.target, pageBreakClass)) {
-          e.name = 'pagebreak';
-        }
-      });
-    };
-
-    const onSetupEditable = editor => api => {
-      const nodeChanged = () => {
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChanged);
-      nodeChanged();
-      return () => {
-        editor.off('NodeChange', nodeChanged);
-      };
-    };
-    const register = editor => {
-      const onAction = () => editor.execCommand('mcePageBreak');
-      editor.ui.registry.addButton('pagebreak', {
-        icon: 'page-break',
-        tooltip: 'Page break',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-      editor.ui.registry.addMenuItem('pagebreak', {
-        text: 'Page break',
-        icon: 'page-break',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-    };
-
-    var Plugin = () => {
-      global$1.add('pagebreak', editor => {
-        register$2(editor);
-        register$1(editor);
-        register(editor);
-        setup$1(editor);
-        setup(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
     const isSimpleType = type => value => typeof value === type;
     const isBoolean = isSimpleType('boolean');
     const isNumber = isSimpleType('number');
@@ -48742,6 +48624,124 @@ tinymce.IconManager.add('default', {
         register$2(editor);
         register$1(editor);
         register(editor);
+        setup(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    var global = tinymce.util.Tools.resolve('tinymce.Env');
+
+    const option = name => editor => editor.options.get(name);
+    const register$2 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('pagebreak_separator', {
+        processor: 'string',
+        default: '<!-- pagebreak -->'
+      });
+      registerOption('pagebreak_split_block', {
+        processor: 'boolean',
+        default: false
+      });
+    };
+    const getSeparatorHtml = option('pagebreak_separator');
+    const shouldSplitBlock = option('pagebreak_split_block');
+
+    const pageBreakClass = 'mce-pagebreak';
+    const getPlaceholderHtml = shouldSplitBlock => {
+      const html = `<img src="${ global.transparentSrc }" class="${ pageBreakClass }" data-mce-resize="false" data-mce-placeholder />`;
+      return shouldSplitBlock ? `<p>${ html }</p>` : html;
+    };
+    const setup$1 = editor => {
+      const separatorHtml = getSeparatorHtml(editor);
+      const shouldSplitBlock$1 = () => shouldSplitBlock(editor);
+      const pageBreakSeparatorRegExp = new RegExp(separatorHtml.replace(/[\?\.\*\[\]\(\)\{\}\+\^\$\:]/g, a => {
+        return '\\' + a;
+      }), 'gi');
+      editor.on('BeforeSetContent', e => {
+        e.content = e.content.replace(pageBreakSeparatorRegExp, getPlaceholderHtml(shouldSplitBlock$1()));
+      });
+      editor.on('PreInit', () => {
+        editor.serializer.addNodeFilter('img', nodes => {
+          let i = nodes.length, node, className;
+          while (i--) {
+            node = nodes[i];
+            className = node.attr('class');
+            if (className && className.indexOf(pageBreakClass) !== -1) {
+              const parentNode = node.parent;
+              if (parentNode && editor.schema.getBlockElements()[parentNode.name] && shouldSplitBlock$1()) {
+                parentNode.type = 3;
+                parentNode.value = separatorHtml;
+                parentNode.raw = true;
+                node.remove();
+                continue;
+              }
+              node.type = 3;
+              node.value = separatorHtml;
+              node.raw = true;
+            }
+          }
+        });
+      });
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mcePageBreak', () => {
+        editor.insertContent(getPlaceholderHtml(shouldSplitBlock(editor)));
+      });
+    };
+
+    const setup = editor => {
+      editor.on('ResolveName', e => {
+        if (e.target.nodeName === 'IMG' && editor.dom.hasClass(e.target, pageBreakClass)) {
+          e.name = 'pagebreak';
+        }
+      });
+    };
+
+    const onSetupEditable = editor => api => {
+      const nodeChanged = () => {
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChanged);
+      nodeChanged();
+      return () => {
+        editor.off('NodeChange', nodeChanged);
+      };
+    };
+    const register = editor => {
+      const onAction = () => editor.execCommand('mcePageBreak');
+      editor.ui.registry.addButton('pagebreak', {
+        icon: 'page-break',
+        tooltip: 'Page break',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+      editor.ui.registry.addMenuItem('pagebreak', {
+        text: 'Page break',
+        icon: 'page-break',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+    };
+
+    var Plugin = () => {
+      global$1.add('pagebreak', editor => {
+        register$2(editor);
+        register$1(editor);
+        register(editor);
+        setup$1(editor);
         setup(editor);
       });
     };
