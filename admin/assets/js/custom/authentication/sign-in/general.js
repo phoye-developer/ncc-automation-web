@@ -14,6 +14,17 @@ var KTSigninGeneral = function () {
             form,
             {
                 fields: {
+                    'login_url': {
+                        validators: {
+                            uri: {
+                                allowEmptyProtocol: true,
+                                message: 'The login URI is not valid'
+                            },
+                            notEmpty: {
+                                message: 'Login URI is required'
+                            }
+                        }
+                    },
                     'email': {
                         validators: {
                             regexp: {
@@ -122,6 +133,9 @@ var KTSigninGeneral = function () {
                     // Disable button to avoid multiple click
                     submitButton.disabled = true;
 
+                    // Get Login URI
+                    const loginUri = form.querySelector('[name="login_url"]').value;
+
                     // Format credentials
                     const credentials = btoa(`${form.querySelector('[name="email"]').value}:${form.querySelector('[name="password"]').value}`);
 
@@ -129,7 +143,7 @@ var KTSigninGeneral = function () {
                     let xhr = new XMLHttpRequest();
                     xhr.withCredentials = true;
 
-                    xhr.open("GET", "https://login.thrio.com/provider/token-with-authorities", false);
+                    xhr.open("GET", `https://${loginUri}/provider/token-with-authorities`, false);
                     xhr.setRequestHeader("Authorization", `Basic ${credentials}`);
 
                     try {

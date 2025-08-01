@@ -118,15 +118,33 @@ Contact: phoye@nextiva.com
                             <!--begin::Heading-->
                             <!--begin::Input group=-->
                             <div class="fv-row mb-8">
-                                <!--begin::Email-->
-                                <input type="text" placeholder="Email" name="email" autocomplete="off"
+                                <!--begin::Subtitle-->
+                                <div class="text-gray-500 fw-semibold fs-6">Login Site</div>
+                                <!--end::Subtitle=-->
+                                <!--begin::Login URL-->
+                                <input type="text" value="login.thrio.com" name="login_url" autocomplete="off"
                                     class="form-control bg-transparent" />
+                                <!--end::Login URL-->
+                            </div>
+                            <!--end::Input group=-->
+                            <!--begin::Input group=-->
+                            <div class="fv-row mb-8">
+                                <!--begin::Subtitle-->
+                                <div class="text-gray-500 fw-semibold fs-6">Email</div>
+                                <!--end::Subtitle=-->
+                                <!--begin::Email-->
+                                <input type="text" name="email" autocomplete="off"
+                                    class="form-control bg-transparent" autofocus />
                                 <!--end::Email-->
                             </div>
                             <!--end::Input group=-->
+                            <!--begin::Input group=-->
                             <div class="fv-row mb-3">
+                                <!--begin::Subtitle-->
+                                <div class="text-gray-500 fw-semibold fs-6">Password</div>
+                                <!--end::Subtitle=-->
                                 <!--begin::Password-->
-                                <input type="password" placeholder="Password" name="password" autocomplete="off"
+                                <input type="password" name="password" autocomplete="off"
                                     class="form-control bg-transparent" />
                                 <!--end::Password-->
                             </div>
