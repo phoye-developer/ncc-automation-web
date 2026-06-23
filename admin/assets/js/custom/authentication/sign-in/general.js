@@ -238,6 +238,8 @@ var KTSigninGeneral = function () {
                                                             userProfile.name
                                                         ) {
 
+                                                            const userProfileName = userProfile.name;
+
                                                             // Set cookie expiration date
                                                             let cookieExpiry = new Date();
                                                             cookieExpiry.setHours(cookieExpiry.getHours() + 24);
@@ -250,6 +252,7 @@ var KTSigninGeneral = function () {
                                                             if (userProfile.tenantId) {
                                                                 document.cookie = `tenantId=${userProfile.tenantId}; expires=${cookieExpiry}; path=/`;
                                                             }
+                                                            document.cookie = `userProfile=${userProfileName}; expires=${cookieExpiry}; path=/`;
 
                                                             // Redirect to home page
                                                             const redirectUrl = form.getAttribute('data-kt-redirect-url');
