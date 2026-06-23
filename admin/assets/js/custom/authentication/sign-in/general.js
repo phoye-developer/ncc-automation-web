@@ -236,7 +236,6 @@ var KTSigninGeneral = function () {
                                                         // Check user profile
                                                         if (
                                                             userProfile.name
-                                                            && userProfile.name == "Administrator"
                                                         ) {
 
                                                             // Set cookie expiration date
@@ -260,7 +259,7 @@ var KTSigninGeneral = function () {
                                                             }
                                                         } else {
                                                             Swal.fire({
-                                                                text: "Sorry, but you need to be an administrator, please try again.",
+                                                                text: "Sorry, something went wrong getting the name of your user profile, please try again.",
                                                                 icon: "error",
                                                                 buttonsStyling: false,
                                                                 confirmButtonText: "Ok, got it!",
