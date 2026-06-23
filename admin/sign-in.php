@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 Author: Nextiva, Inc.
-Product Name: Nextiva Automation Tool Version: 1.3.0
+Product Name: Nextiva Integration Tool Version: 1.3.0
 Website: https://www.nextiva.com
 Contact: phoye@nextiva.com
 -->
@@ -9,16 +9,16 @@ Contact: phoye@nextiva.com
 <!--begin::Head-->
 
 <head>
-    <title>Nextiva Automation Tool</title>
+    <title>Nextiva Integration Tool</title>
     <meta charset="utf-8" />
     <meta name="description" content="A web-based application for provisioning Nextiva." />
     <meta name="keywords" content="Nextiva, contact center, provisioning" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="Nextiva Automation Tool" />
+    <meta property="og:title" content="Nextiva Integration Tool" />
     <meta property="og:url" content="https://nextiva.com" />
-    <meta property="og:site_name" content="Nextiva Automation Tool" />
+    <meta property="og:site_name" content="Nextiva Integration Tool" />
     <link rel="canonical" href="https://enterprise-demos.com/admin/sign-in.php" />
     <link rel="shortcut icon" href="assets/media/logos/favicon.ico" />
     <!--begin::Fonts(mandatory for all pages)-->
@@ -90,7 +90,7 @@ Contact: phoye@nextiva.com
                     </a>
                     <!--end::Logo-->
                     <!--begin::Title-->
-                    <h2 class="text-white fw-normal m-0">Nextiva Automation Tool</h2>
+                    <h2 class="text-white fw-normal m-0">Nextiva Integration Tool</h2>
                     <!--end::Title-->
                 </div>
                 <!--begin::Aside-->

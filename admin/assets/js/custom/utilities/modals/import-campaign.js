@@ -325,7 +325,7 @@ var KTImportCampaign = function () {
 												));
 										}
 									} else {
-										output.value += `Your browser does not support web workers, which is necessary to use this automation tool.\n`;
+										output.value += `Your browser does not support web workers, which is necessary to use this integration tool.\n`;
 									}
 								}
 								reader.readAsText(importFile);
