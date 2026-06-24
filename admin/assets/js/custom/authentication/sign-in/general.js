@@ -236,9 +236,8 @@ var KTSigninGeneral = function () {
                                                         // Check user profile
                                                         if (
                                                             userProfile.name
+                                                            && userProfile.name == "Administrator"
                                                         ) {
-
-                                                            const userProfileName = userProfile.name;
 
                                                             // Set cookie expiration date
                                                             let cookieExpiry = new Date();
@@ -252,7 +251,6 @@ var KTSigninGeneral = function () {
                                                             if (userProfile.tenantId) {
                                                                 document.cookie = `tenantId=${userProfile.tenantId}; expires=${cookieExpiry}; path=/`;
                                                             }
-                                                            document.cookie = `userProfile=${userProfileName}; expires=${cookieExpiry}; path=/`;
 
                                                             // Redirect to home page
                                                             const redirectUrl = form.getAttribute('data-kt-redirect-url');
@@ -262,7 +260,7 @@ var KTSigninGeneral = function () {
                                                             }
                                                         } else {
                                                             Swal.fire({
-                                                                text: "Sorry, something went wrong getting the name of your user profile, please try again.",
+                                                                text: "Sorry, but you need to be an administrator, please try again.",
                                                                 icon: "error",
                                                                 buttonsStyling: false,
                                                                 confirmButtonText: "Ok, got it!",
