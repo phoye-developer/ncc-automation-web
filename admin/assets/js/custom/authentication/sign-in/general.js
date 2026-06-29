@@ -271,6 +271,49 @@ var KTSigninGeneral = function () {
 
                                                                 if (xhr.status == 200) {
 
+                                                                    // Start pub server for supervisor stats
+                                                                    let data = JSON.stringify({
+                                                                        "campaigns": 1,
+                                                                        "outboundlists": 1,
+                                                                        "queues": 1,
+                                                                        "users": 1,
+                                                                        "workitems": 1
+                                                                    });
+
+                                                                    let xhr = new XMLHttpRequest();
+                                                                    xhr.withCredentials = true;
+
+                                                                    xhr.open("POST", `${nccLocation}/users/api/stats/filter`, false);
+                                                                    xhr.setRequestHeader("Authorization", nccToken);
+                                                                    xhr.setRequestHeader("Content-Type", "application/json");
+
+                                                                    try {
+                                                                        xhr.send(data);
+
+                                                                        if (xhr.status !== 200) {
+                                                                            Swal.fire({
+                                                                                text: "Sorry, I'm unable to subscribe to stats at this time. You may not see stats for a while.",
+                                                                                icon: "error",
+                                                                                buttonsStyling: false,
+                                                                                confirmButtonText: "Ok, got it!",
+                                                                                customClass: {
+                                                                                    confirmButton: "btn btn-primary"
+                                                                                }
+                                                                            });
+                                                                        }
+
+                                                                    } catch (error) {
+                                                                        Swal.fire({
+                                                                            text: "Sorry, I'm unable to subscribe to stats at this time. You may not see stats for a while.",
+                                                                            icon: "error",
+                                                                            buttonsStyling: false,
+                                                                            confirmButtonText: "Ok, got it!",
+                                                                            customClass: {
+                                                                                confirmButton: "btn btn-primary"
+                                                                            }
+                                                                        });
+                                                                    }
+
                                                                     // Redirect to home page
                                                                     const redirectUrl = form.getAttribute('data-kt-redirect-url');
 
