@@ -254,11 +254,70 @@ var KTSigninGeneral = function () {
                                                             }
                                                             document.cookie = `userProfile=${userProfileName}; expires=${cookieExpiry}; path=/`;
 
-                                                            // Redirect to home page
-                                                            const redirectUrl = form.getAttribute('data-kt-redirect-url');
+                                                            // Log in
+                                                            let data = JSON.stringify({
+                                                                "deviceInfo": "web"
+                                                            });
 
-                                                            if (redirectUrl) {
-                                                                location.href = redirectUrl;
+                                                            let xhr = new XMLHttpRequest();
+                                                            xhr.withCredentials = true;
+
+                                                            xhr.open("POST", `${nccLocation}/users/api/login`, false);
+                                                            xhr.setRequestHeader("Authorization", nccToken);
+                                                            xhr.setRequestHeader("Content-Type", "application/json");
+
+                                                            try {
+                                                                xhr.send(data);
+
+                                                                if (xhr.status == 200) {
+
+                                                                    // Redirect to home page
+                                                                    const redirectUrl = form.getAttribute('data-kt-redirect-url');
+
+                                                                    if (redirectUrl) {
+                                                                        location.href = redirectUrl;
+                                                                    }
+
+                                                                } else {
+                                                                    Swal.fire({
+                                                                        text: "Sorry, something went wrong logging you in, please try again.",
+                                                                        icon: "error",
+                                                                        buttonsStyling: false,
+                                                                        confirmButtonText: "Ok, got it!",
+                                                                        customClass: {
+                                                                            confirmButton: "btn btn-primary"
+                                                                        }
+                                                                    });
+
+                                                                    // Reset form
+                                                                    form.reset();
+
+                                                                    // Hide loading indication
+                                                                    submitButton.removeAttribute('data-kt-indicator');
+
+                                                                    // Enable button
+                                                                    submitButton.disabled = false;
+                                                                }
+
+                                                            } catch (error) {
+                                                                Swal.fire({
+                                                                    text: "Sorry, something went wrong logging you in, please try again.",
+                                                                    icon: "error",
+                                                                    buttonsStyling: false,
+                                                                    confirmButtonText: "Ok, got it!",
+                                                                    customClass: {
+                                                                        confirmButton: "btn btn-primary"
+                                                                    }
+                                                                });
+
+                                                                // Reset form
+                                                                form.reset();
+
+                                                                // Hide loading indication
+                                                                submitButton.removeAttribute('data-kt-indicator');
+
+                                                                // Enable button
+                                                                submitButton.disabled = false;
                                                             }
                                                         } else {
                                                             Swal.fire({

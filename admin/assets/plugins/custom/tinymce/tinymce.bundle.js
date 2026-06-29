@@ -32190,6 +32190,266 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const applyListFormat = (editor, listName, styleValue) => {
+      const cmd = listName === 'UL' ? 'InsertUnorderedList' : 'InsertOrderedList';
+      editor.execCommand(cmd, false, styleValue === false ? null : { 'list-style-type': styleValue });
+    };
+
+    const register$2 = editor => {
+      editor.addCommand('ApplyUnorderedListStyle', (ui, value) => {
+        applyListFormat(editor, 'UL', value['list-style-type']);
+      });
+      editor.addCommand('ApplyOrderedListStyle', (ui, value) => {
+        applyListFormat(editor, 'OL', value['list-style-type']);
+      });
+    };
+
+    const option = name => editor => editor.options.get(name);
+    const register$1 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('advlist_number_styles', {
+        processor: 'string[]',
+        default: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman'.split(',')
+      });
+      registerOption('advlist_bullet_styles', {
+        processor: 'string[]',
+        default: 'default,circle,square'.split(',')
+      });
+    };
+    const getNumberStyles = option('advlist_number_styles');
+    const getBulletStyles = option('advlist_bullet_styles');
+
+    const isNullable = a => a === null || a === undefined;
+    const isNonNullable = a => !isNullable(a);
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    class Optional {
+      constructor(tag, value) {
+        this.tag = tag;
+        this.value = value;
+      }
+      static some(value) {
+        return new Optional(true, value);
+      }
+      static none() {
+        return Optional.singletonNone;
+      }
+      fold(onNone, onSome) {
+        if (this.tag) {
+          return onSome(this.value);
+        } else {
+          return onNone();
+        }
+      }
+      isSome() {
+        return this.tag;
+      }
+      isNone() {
+        return !this.tag;
+      }
+      map(mapper) {
+        if (this.tag) {
+          return Optional.some(mapper(this.value));
+        } else {
+          return Optional.none();
+        }
+      }
+      bind(binder) {
+        if (this.tag) {
+          return binder(this.value);
+        } else {
+          return Optional.none();
+        }
+      }
+      exists(predicate) {
+        return this.tag && predicate(this.value);
+      }
+      forall(predicate) {
+        return !this.tag || predicate(this.value);
+      }
+      filter(predicate) {
+        if (!this.tag || predicate(this.value)) {
+          return this;
+        } else {
+          return Optional.none();
+        }
+      }
+      getOr(replacement) {
+        return this.tag ? this.value : replacement;
+      }
+      or(replacement) {
+        return this.tag ? this : replacement;
+      }
+      getOrThunk(thunk) {
+        return this.tag ? this.value : thunk();
+      }
+      orThunk(thunk) {
+        return this.tag ? this : thunk();
+      }
+      getOrDie(message) {
+        if (!this.tag) {
+          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+        } else {
+          return this.value;
+        }
+      }
+      static from(value) {
+        return isNonNullable(value) ? Optional.some(value) : Optional.none();
+      }
+      getOrNull() {
+        return this.tag ? this.value : null;
+      }
+      getOrUndefined() {
+        return this.value;
+      }
+      each(worker) {
+        if (this.tag) {
+          worker(this.value);
+        }
+      }
+      toArray() {
+        return this.tag ? [this.value] : [];
+      }
+      toString() {
+        return this.tag ? `some(${ this.value })` : 'none()';
+      }
+    }
+    Optional.singletonNone = new Optional(false);
+
+    const findUntil = (xs, pred, until) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        if (pred(x, i)) {
+          return Optional.some(x);
+        } else if (until(x, i)) {
+          break;
+        }
+      }
+      return Optional.none();
+    };
+
+    const isCustomList = list => /\btox\-/.test(list.className);
+    const isChildOfBody = (editor, elm) => {
+      return editor.dom.isChildOf(elm, editor.getBody());
+    };
+    const matchNodeNames = regex => node => isNonNullable(node) && regex.test(node.nodeName);
+    const isListNode = matchNodeNames(/^(OL|UL|DL)$/);
+    const isTableCellNode = matchNodeNames(/^(TH|TD)$/);
+    const inList = (editor, parents, nodeName) => findUntil(parents, parent => isListNode(parent) && !isCustomList(parent), isTableCellNode).exists(list => list.nodeName === nodeName && isChildOfBody(editor, list));
+    const getSelectedStyleType = editor => {
+      const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
+      const style = editor.dom.getStyle(listElm, 'listStyleType');
+      return Optional.from(style);
+    };
+    const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
+    const isWithinNonEditableList = (editor, element) => {
+      const parentList = editor.dom.getParent(element, 'ol,ul,dl');
+      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
+    };
+    const setNodeChangeHandler = (editor, nodeChangeHandler) => {
+      const initialNode = editor.selection.getNode();
+      nodeChangeHandler({
+        parents: editor.dom.getParents(initialNode),
+        element: initialNode
+      });
+      editor.on('NodeChange', nodeChangeHandler);
+      return () => editor.off('NodeChange', nodeChangeHandler);
+    };
+
+    const styleValueToText = styleValue => {
+      return styleValue.replace(/\-/g, ' ').replace(/\b\w/g, chr => {
+        return chr.toUpperCase();
+      });
+    };
+    const normalizeStyleValue = styleValue => isNullable(styleValue) || styleValue === 'default' ? '' : styleValue;
+    const makeSetupHandler = (editor, nodeName) => api => {
+      const updateButtonState = (editor, parents) => {
+        const element = editor.selection.getStart(true);
+        api.setActive(inList(editor, parents, nodeName));
+        api.setEnabled(!isWithinNonEditableList(editor, element));
+      };
+      const nodeChangeHandler = e => updateButtonState(editor, e.parents);
+      return setNodeChangeHandler(editor, nodeChangeHandler);
+    };
+    const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
+      editor.ui.registry.addSplitButton(id, {
+        tooltip,
+        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
+        presets: 'listpreview',
+        columns: 3,
+        fetch: callback => {
+          const items = global.map(styles, styleValue => {
+            const iconStyle = nodeName === 'OL' ? 'num' : 'bull';
+            const iconName = styleValue === 'disc' || styleValue === 'decimal' ? 'default' : styleValue;
+            const itemValue = normalizeStyleValue(styleValue);
+            const displayText = styleValueToText(styleValue);
+            return {
+              type: 'choiceitem',
+              value: itemValue,
+              icon: 'list-' + iconStyle + '-' + iconName,
+              text: displayText
+            };
+          });
+          callback(items);
+        },
+        onAction: () => editor.execCommand(cmd),
+        onItemAction: (_splitButtonApi, value) => {
+          applyListFormat(editor, nodeName, value);
+        },
+        select: value => {
+          const listStyleType = getSelectedStyleType(editor);
+          return listStyleType.map(listStyle => value === listStyle).getOr(false);
+        },
+        onSetup: makeSetupHandler(editor, nodeName)
+      });
+    };
+    const addButton = (editor, id, tooltip, cmd, nodeName, styleValue) => {
+      editor.ui.registry.addToggleButton(id, {
+        active: false,
+        tooltip,
+        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
+        onSetup: makeSetupHandler(editor, nodeName),
+        onAction: () => editor.queryCommandState(cmd) || styleValue === '' ? editor.execCommand(cmd) : applyListFormat(editor, nodeName, styleValue)
+      });
+    };
+    const addControl = (editor, id, tooltip, cmd, nodeName, styles) => {
+      if (styles.length > 1) {
+        addSplitButton(editor, id, tooltip, cmd, nodeName, styles);
+      } else {
+        addButton(editor, id, tooltip, cmd, nodeName, normalizeStyleValue(styles[0]));
+      }
+    };
+    const register = editor => {
+      addControl(editor, 'numlist', 'Numbered list', 'InsertOrderedList', 'OL', getNumberStyles(editor));
+      addControl(editor, 'bullist', 'Bullet list', 'InsertUnorderedList', 'UL', getBulletStyles(editor));
+    };
+
+    var Plugin = () => {
+      global$1.add('advlist', editor => {
+        if (editor.hasPlugin('lists')) {
+          register$1(editor);
+          register(editor);
+          register$2(editor);
+        } else {
+          console.error('Please use the Lists plugin together with the List Styles plugin.');
+        }
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
     var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
     const random = () => window.crypto.getRandomValues(new Uint32Array(1))[0] / 4294967295;
@@ -33246,481 +33506,6 @@ tinymce.IconManager.add('default', {
  */
 
 (function () {
-    'use strict';
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const applyListFormat = (editor, listName, styleValue) => {
-      const cmd = listName === 'UL' ? 'InsertUnorderedList' : 'InsertOrderedList';
-      editor.execCommand(cmd, false, styleValue === false ? null : { 'list-style-type': styleValue });
-    };
-
-    const register$2 = editor => {
-      editor.addCommand('ApplyUnorderedListStyle', (ui, value) => {
-        applyListFormat(editor, 'UL', value['list-style-type']);
-      });
-      editor.addCommand('ApplyOrderedListStyle', (ui, value) => {
-        applyListFormat(editor, 'OL', value['list-style-type']);
-      });
-    };
-
-    const option = name => editor => editor.options.get(name);
-    const register$1 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('advlist_number_styles', {
-        processor: 'string[]',
-        default: 'default,lower-alpha,lower-greek,lower-roman,upper-alpha,upper-roman'.split(',')
-      });
-      registerOption('advlist_bullet_styles', {
-        processor: 'string[]',
-        default: 'default,circle,square'.split(',')
-      });
-    };
-    const getNumberStyles = option('advlist_number_styles');
-    const getBulletStyles = option('advlist_bullet_styles');
-
-    const isNullable = a => a === null || a === undefined;
-    const isNonNullable = a => !isNullable(a);
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    class Optional {
-      constructor(tag, value) {
-        this.tag = tag;
-        this.value = value;
-      }
-      static some(value) {
-        return new Optional(true, value);
-      }
-      static none() {
-        return Optional.singletonNone;
-      }
-      fold(onNone, onSome) {
-        if (this.tag) {
-          return onSome(this.value);
-        } else {
-          return onNone();
-        }
-      }
-      isSome() {
-        return this.tag;
-      }
-      isNone() {
-        return !this.tag;
-      }
-      map(mapper) {
-        if (this.tag) {
-          return Optional.some(mapper(this.value));
-        } else {
-          return Optional.none();
-        }
-      }
-      bind(binder) {
-        if (this.tag) {
-          return binder(this.value);
-        } else {
-          return Optional.none();
-        }
-      }
-      exists(predicate) {
-        return this.tag && predicate(this.value);
-      }
-      forall(predicate) {
-        return !this.tag || predicate(this.value);
-      }
-      filter(predicate) {
-        if (!this.tag || predicate(this.value)) {
-          return this;
-        } else {
-          return Optional.none();
-        }
-      }
-      getOr(replacement) {
-        return this.tag ? this.value : replacement;
-      }
-      or(replacement) {
-        return this.tag ? this : replacement;
-      }
-      getOrThunk(thunk) {
-        return this.tag ? this.value : thunk();
-      }
-      orThunk(thunk) {
-        return this.tag ? this : thunk();
-      }
-      getOrDie(message) {
-        if (!this.tag) {
-          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
-        } else {
-          return this.value;
-        }
-      }
-      static from(value) {
-        return isNonNullable(value) ? Optional.some(value) : Optional.none();
-      }
-      getOrNull() {
-        return this.tag ? this.value : null;
-      }
-      getOrUndefined() {
-        return this.value;
-      }
-      each(worker) {
-        if (this.tag) {
-          worker(this.value);
-        }
-      }
-      toArray() {
-        return this.tag ? [this.value] : [];
-      }
-      toString() {
-        return this.tag ? `some(${ this.value })` : 'none()';
-      }
-    }
-    Optional.singletonNone = new Optional(false);
-
-    const findUntil = (xs, pred, until) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        if (pred(x, i)) {
-          return Optional.some(x);
-        } else if (until(x, i)) {
-          break;
-        }
-      }
-      return Optional.none();
-    };
-
-    const isCustomList = list => /\btox\-/.test(list.className);
-    const isChildOfBody = (editor, elm) => {
-      return editor.dom.isChildOf(elm, editor.getBody());
-    };
-    const matchNodeNames = regex => node => isNonNullable(node) && regex.test(node.nodeName);
-    const isListNode = matchNodeNames(/^(OL|UL|DL)$/);
-    const isTableCellNode = matchNodeNames(/^(TH|TD)$/);
-    const inList = (editor, parents, nodeName) => findUntil(parents, parent => isListNode(parent) && !isCustomList(parent), isTableCellNode).exists(list => list.nodeName === nodeName && isChildOfBody(editor, list));
-    const getSelectedStyleType = editor => {
-      const listElm = editor.dom.getParent(editor.selection.getNode(), 'ol,ul');
-      const style = editor.dom.getStyle(listElm, 'listStyleType');
-      return Optional.from(style);
-    };
-    const isWithinNonEditable = (editor, element) => element !== null && !editor.dom.isEditable(element);
-    const isWithinNonEditableList = (editor, element) => {
-      const parentList = editor.dom.getParent(element, 'ol,ul,dl');
-      return isWithinNonEditable(editor, parentList) || !editor.selection.isEditable();
-    };
-    const setNodeChangeHandler = (editor, nodeChangeHandler) => {
-      const initialNode = editor.selection.getNode();
-      nodeChangeHandler({
-        parents: editor.dom.getParents(initialNode),
-        element: initialNode
-      });
-      editor.on('NodeChange', nodeChangeHandler);
-      return () => editor.off('NodeChange', nodeChangeHandler);
-    };
-
-    const styleValueToText = styleValue => {
-      return styleValue.replace(/\-/g, ' ').replace(/\b\w/g, chr => {
-        return chr.toUpperCase();
-      });
-    };
-    const normalizeStyleValue = styleValue => isNullable(styleValue) || styleValue === 'default' ? '' : styleValue;
-    const makeSetupHandler = (editor, nodeName) => api => {
-      const updateButtonState = (editor, parents) => {
-        const element = editor.selection.getStart(true);
-        api.setActive(inList(editor, parents, nodeName));
-        api.setEnabled(!isWithinNonEditableList(editor, element));
-      };
-      const nodeChangeHandler = e => updateButtonState(editor, e.parents);
-      return setNodeChangeHandler(editor, nodeChangeHandler);
-    };
-    const addSplitButton = (editor, id, tooltip, cmd, nodeName, styles) => {
-      editor.ui.registry.addSplitButton(id, {
-        tooltip,
-        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
-        presets: 'listpreview',
-        columns: 3,
-        fetch: callback => {
-          const items = global.map(styles, styleValue => {
-            const iconStyle = nodeName === 'OL' ? 'num' : 'bull';
-            const iconName = styleValue === 'disc' || styleValue === 'decimal' ? 'default' : styleValue;
-            const itemValue = normalizeStyleValue(styleValue);
-            const displayText = styleValueToText(styleValue);
-            return {
-              type: 'choiceitem',
-              value: itemValue,
-              icon: 'list-' + iconStyle + '-' + iconName,
-              text: displayText
-            };
-          });
-          callback(items);
-        },
-        onAction: () => editor.execCommand(cmd),
-        onItemAction: (_splitButtonApi, value) => {
-          applyListFormat(editor, nodeName, value);
-        },
-        select: value => {
-          const listStyleType = getSelectedStyleType(editor);
-          return listStyleType.map(listStyle => value === listStyle).getOr(false);
-        },
-        onSetup: makeSetupHandler(editor, nodeName)
-      });
-    };
-    const addButton = (editor, id, tooltip, cmd, nodeName, styleValue) => {
-      editor.ui.registry.addToggleButton(id, {
-        active: false,
-        tooltip,
-        icon: nodeName === 'OL' ? 'ordered-list' : 'unordered-list',
-        onSetup: makeSetupHandler(editor, nodeName),
-        onAction: () => editor.queryCommandState(cmd) || styleValue === '' ? editor.execCommand(cmd) : applyListFormat(editor, nodeName, styleValue)
-      });
-    };
-    const addControl = (editor, id, tooltip, cmd, nodeName, styles) => {
-      if (styles.length > 1) {
-        addSplitButton(editor, id, tooltip, cmd, nodeName, styles);
-      } else {
-        addButton(editor, id, tooltip, cmd, nodeName, normalizeStyleValue(styles[0]));
-      }
-    };
-    const register = editor => {
-      addControl(editor, 'numlist', 'Numbered list', 'InsertOrderedList', 'OL', getNumberStyles(editor));
-      addControl(editor, 'bullist', 'Bullet list', 'InsertUnorderedList', 'UL', getBulletStyles(editor));
-    };
-
-    var Plugin = () => {
-      global$1.add('advlist', editor => {
-        if (editor.hasPlugin('lists')) {
-          register$1(editor);
-          register(editor);
-          register$2(editor);
-        } else {
-          console.error('Please use the Lists plugin together with the List Styles plugin.');
-        }
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$2 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.dom.RangeUtils');
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    const option = name => editor => editor.options.get(name);
-    const register$2 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('allow_html_in_named_anchor', {
-        processor: 'boolean',
-        default: false
-      });
-    };
-    const allowHtmlInNamedAnchor = option('allow_html_in_named_anchor');
-
-    const namedAnchorSelector = 'a:not([href])';
-    const isEmptyString = str => !str;
-    const getIdFromAnchor = elm => {
-      const id = elm.getAttribute('id') || elm.getAttribute('name');
-      return id || '';
-    };
-    const isAnchor = elm => elm.nodeName.toLowerCase() === 'a';
-    const isNamedAnchor = elm => isAnchor(elm) && !elm.getAttribute('href') && getIdFromAnchor(elm) !== '';
-    const isEmptyNamedAnchor = elm => isNamedAnchor(elm) && !elm.firstChild;
-
-    const removeEmptyNamedAnchorsInSelection = editor => {
-      const dom = editor.dom;
-      global$1(dom).walk(editor.selection.getRng(), nodes => {
-        global.each(nodes, node => {
-          if (isEmptyNamedAnchor(node)) {
-            dom.remove(node, false);
-          }
-        });
-      });
-    };
-    const isValidId = id => /^[A-Za-z][A-Za-z0-9\-:._]*$/.test(id);
-    const getNamedAnchor = editor => editor.dom.getParent(editor.selection.getStart(), namedAnchorSelector);
-    const getId = editor => {
-      const anchor = getNamedAnchor(editor);
-      if (anchor) {
-        return getIdFromAnchor(anchor);
-      } else {
-        return '';
-      }
-    };
-    const createAnchor = (editor, id) => {
-      editor.undoManager.transact(() => {
-        if (!allowHtmlInNamedAnchor(editor)) {
-          editor.selection.collapse(true);
-        }
-        if (editor.selection.isCollapsed()) {
-          editor.insertContent(editor.dom.createHTML('a', { id }));
-        } else {
-          removeEmptyNamedAnchorsInSelection(editor);
-          editor.formatter.remove('namedAnchor', undefined, undefined, true);
-          editor.formatter.apply('namedAnchor', { value: id });
-          editor.addVisual();
-        }
-      });
-    };
-    const updateAnchor = (editor, id, anchorElement) => {
-      anchorElement.removeAttribute('name');
-      anchorElement.id = id;
-      editor.addVisual();
-      editor.undoManager.add();
-    };
-    const insert = (editor, id) => {
-      const anchor = getNamedAnchor(editor);
-      if (anchor) {
-        updateAnchor(editor, id, anchor);
-      } else {
-        createAnchor(editor, id);
-      }
-      editor.focus();
-    };
-
-    const insertAnchor = (editor, newId) => {
-      if (!isValidId(newId)) {
-        editor.windowManager.alert('ID should start with a letter, followed only by letters, numbers, dashes, dots, colons or underscores.');
-        return false;
-      } else {
-        insert(editor, newId);
-        return true;
-      }
-    };
-    const open = editor => {
-      const currentId = getId(editor);
-      editor.windowManager.open({
-        title: 'Anchor',
-        size: 'normal',
-        body: {
-          type: 'panel',
-          items: [{
-              name: 'id',
-              type: 'input',
-              label: 'ID',
-              placeholder: 'example'
-            }]
-        },
-        buttons: [
-          {
-            type: 'cancel',
-            name: 'cancel',
-            text: 'Cancel'
-          },
-          {
-            type: 'submit',
-            name: 'save',
-            text: 'Save',
-            primary: true
-          }
-        ],
-        initialData: { id: currentId },
-        onSubmit: api => {
-          if (insertAnchor(editor, api.getData().id)) {
-            api.close();
-          }
-        }
-      });
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mceAnchor', () => {
-        open(editor);
-      });
-    };
-
-    const isNamedAnchorNode = node => isEmptyString(node.attr('href')) && !isEmptyString(node.attr('id') || node.attr('name'));
-    const isEmptyNamedAnchorNode = node => isNamedAnchorNode(node) && !node.firstChild;
-    const setContentEditable = state => nodes => {
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        if (isEmptyNamedAnchorNode(node)) {
-          node.attr('contenteditable', state);
-        }
-      }
-    };
-    const setup = editor => {
-      editor.on('PreInit', () => {
-        editor.parser.addNodeFilter('a', setContentEditable('false'));
-        editor.serializer.addNodeFilter('a', setContentEditable(null));
-      });
-    };
-
-    const registerFormats = editor => {
-      editor.formatter.register('namedAnchor', {
-        inline: 'a',
-        selector: namedAnchorSelector,
-        remove: 'all',
-        split: true,
-        deep: true,
-        attributes: { id: '%value' },
-        onmatch: (node, _fmt, _itemName) => {
-          return isNamedAnchor(node);
-        }
-      });
-    };
-
-    const onSetupEditable = editor => api => {
-      const nodeChanged = () => {
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChanged);
-      nodeChanged();
-      return () => {
-        editor.off('NodeChange', nodeChanged);
-      };
-    };
-    const register = editor => {
-      const onAction = () => editor.execCommand('mceAnchor');
-      editor.ui.registry.addToggleButton('anchor', {
-        icon: 'bookmark',
-        tooltip: 'Anchor',
-        onAction,
-        onSetup: buttonApi => {
-          const unbindSelectorChanged = editor.selection.selectorChangedWithUnbind('a:not([href])', buttonApi.setActive).unbind;
-          const unbindEditableChanged = onSetupEditable(editor)(buttonApi);
-          return () => {
-            unbindSelectorChanged();
-            unbindEditableChanged();
-          };
-        }
-      });
-      editor.ui.registry.addMenuItem('anchor', {
-        icon: 'bookmark',
-        text: 'Anchor...',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-    };
-
-    var Plugin = () => {
-      global$2.add('anchor', editor => {
-        register$2(editor);
-        setup(editor);
-        register$1(editor);
-        register(editor);
-        editor.on('PreInit', () => {
-          registerFormats(editor);
-        });
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
   'use strict';
 
   var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
@@ -33942,6 +33727,221 @@ tinymce.IconManager.add('default', {
   };
 
   Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$2 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.dom.RangeUtils');
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    const option = name => editor => editor.options.get(name);
+    const register$2 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('allow_html_in_named_anchor', {
+        processor: 'boolean',
+        default: false
+      });
+    };
+    const allowHtmlInNamedAnchor = option('allow_html_in_named_anchor');
+
+    const namedAnchorSelector = 'a:not([href])';
+    const isEmptyString = str => !str;
+    const getIdFromAnchor = elm => {
+      const id = elm.getAttribute('id') || elm.getAttribute('name');
+      return id || '';
+    };
+    const isAnchor = elm => elm.nodeName.toLowerCase() === 'a';
+    const isNamedAnchor = elm => isAnchor(elm) && !elm.getAttribute('href') && getIdFromAnchor(elm) !== '';
+    const isEmptyNamedAnchor = elm => isNamedAnchor(elm) && !elm.firstChild;
+
+    const removeEmptyNamedAnchorsInSelection = editor => {
+      const dom = editor.dom;
+      global$1(dom).walk(editor.selection.getRng(), nodes => {
+        global.each(nodes, node => {
+          if (isEmptyNamedAnchor(node)) {
+            dom.remove(node, false);
+          }
+        });
+      });
+    };
+    const isValidId = id => /^[A-Za-z][A-Za-z0-9\-:._]*$/.test(id);
+    const getNamedAnchor = editor => editor.dom.getParent(editor.selection.getStart(), namedAnchorSelector);
+    const getId = editor => {
+      const anchor = getNamedAnchor(editor);
+      if (anchor) {
+        return getIdFromAnchor(anchor);
+      } else {
+        return '';
+      }
+    };
+    const createAnchor = (editor, id) => {
+      editor.undoManager.transact(() => {
+        if (!allowHtmlInNamedAnchor(editor)) {
+          editor.selection.collapse(true);
+        }
+        if (editor.selection.isCollapsed()) {
+          editor.insertContent(editor.dom.createHTML('a', { id }));
+        } else {
+          removeEmptyNamedAnchorsInSelection(editor);
+          editor.formatter.remove('namedAnchor', undefined, undefined, true);
+          editor.formatter.apply('namedAnchor', { value: id });
+          editor.addVisual();
+        }
+      });
+    };
+    const updateAnchor = (editor, id, anchorElement) => {
+      anchorElement.removeAttribute('name');
+      anchorElement.id = id;
+      editor.addVisual();
+      editor.undoManager.add();
+    };
+    const insert = (editor, id) => {
+      const anchor = getNamedAnchor(editor);
+      if (anchor) {
+        updateAnchor(editor, id, anchor);
+      } else {
+        createAnchor(editor, id);
+      }
+      editor.focus();
+    };
+
+    const insertAnchor = (editor, newId) => {
+      if (!isValidId(newId)) {
+        editor.windowManager.alert('ID should start with a letter, followed only by letters, numbers, dashes, dots, colons or underscores.');
+        return false;
+      } else {
+        insert(editor, newId);
+        return true;
+      }
+    };
+    const open = editor => {
+      const currentId = getId(editor);
+      editor.windowManager.open({
+        title: 'Anchor',
+        size: 'normal',
+        body: {
+          type: 'panel',
+          items: [{
+              name: 'id',
+              type: 'input',
+              label: 'ID',
+              placeholder: 'example'
+            }]
+        },
+        buttons: [
+          {
+            type: 'cancel',
+            name: 'cancel',
+            text: 'Cancel'
+          },
+          {
+            type: 'submit',
+            name: 'save',
+            text: 'Save',
+            primary: true
+          }
+        ],
+        initialData: { id: currentId },
+        onSubmit: api => {
+          if (insertAnchor(editor, api.getData().id)) {
+            api.close();
+          }
+        }
+      });
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mceAnchor', () => {
+        open(editor);
+      });
+    };
+
+    const isNamedAnchorNode = node => isEmptyString(node.attr('href')) && !isEmptyString(node.attr('id') || node.attr('name'));
+    const isEmptyNamedAnchorNode = node => isNamedAnchorNode(node) && !node.firstChild;
+    const setContentEditable = state => nodes => {
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        if (isEmptyNamedAnchorNode(node)) {
+          node.attr('contenteditable', state);
+        }
+      }
+    };
+    const setup = editor => {
+      editor.on('PreInit', () => {
+        editor.parser.addNodeFilter('a', setContentEditable('false'));
+        editor.serializer.addNodeFilter('a', setContentEditable(null));
+      });
+    };
+
+    const registerFormats = editor => {
+      editor.formatter.register('namedAnchor', {
+        inline: 'a',
+        selector: namedAnchorSelector,
+        remove: 'all',
+        split: true,
+        deep: true,
+        attributes: { id: '%value' },
+        onmatch: (node, _fmt, _itemName) => {
+          return isNamedAnchor(node);
+        }
+      });
+    };
+
+    const onSetupEditable = editor => api => {
+      const nodeChanged = () => {
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChanged);
+      nodeChanged();
+      return () => {
+        editor.off('NodeChange', nodeChanged);
+      };
+    };
+    const register = editor => {
+      const onAction = () => editor.execCommand('mceAnchor');
+      editor.ui.registry.addToggleButton('anchor', {
+        icon: 'bookmark',
+        tooltip: 'Anchor',
+        onAction,
+        onSetup: buttonApi => {
+          const unbindSelectorChanged = editor.selection.selectorChangedWithUnbind('a:not([href])', buttonApi.setActive).unbind;
+          const unbindEditableChanged = onSetupEditable(editor)(buttonApi);
+          return () => {
+            unbindSelectorChanged();
+            unbindEditableChanged();
+          };
+        }
+      });
+      editor.ui.registry.addMenuItem('anchor', {
+        icon: 'bookmark',
+        text: 'Anchor...',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+    };
+
+    var Plugin = () => {
+      global$2.add('anchor', editor => {
+        register$2(editor);
+        setup(editor);
+        register$1(editor);
+        register(editor);
+        editor.on('PreInit', () => {
+          registerFormats(editor);
+        });
+      });
+    };
+
+    Plugin();
 
 })();
 
@@ -34353,6 +34353,92 @@ tinymce.IconManager.add('default', {
           }
         });
         return get(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const setContent = (editor, html) => {
+      editor.focus();
+      editor.undoManager.transact(() => {
+        editor.setContent(html);
+      });
+      editor.selection.setCursorLocation();
+      editor.nodeChanged();
+    };
+    const getContent = editor => {
+      return editor.getContent({ source_view: true });
+    };
+
+    const open = editor => {
+      const editorContent = getContent(editor);
+      editor.windowManager.open({
+        title: 'Source Code',
+        size: 'large',
+        body: {
+          type: 'panel',
+          items: [{
+              type: 'textarea',
+              name: 'code'
+            }]
+        },
+        buttons: [
+          {
+            type: 'cancel',
+            name: 'cancel',
+            text: 'Cancel'
+          },
+          {
+            type: 'submit',
+            name: 'save',
+            text: 'Save',
+            primary: true
+          }
+        ],
+        initialData: { code: editorContent },
+        onSubmit: api => {
+          setContent(editor, api.getData().code);
+          api.close();
+        }
+      });
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mceCodeEditor', () => {
+        open(editor);
+      });
+    };
+
+    const register = editor => {
+      const onAction = () => editor.execCommand('mceCodeEditor');
+      editor.ui.registry.addButton('code', {
+        icon: 'sourcecode',
+        tooltip: 'Source code',
+        onAction
+      });
+      editor.ui.registry.addMenuItem('code', {
+        icon: 'sourcecode',
+        text: 'Source code',
+        onAction
+      });
+    };
+
+    var Plugin = () => {
+      global.add('code', editor => {
+        register$1(editor);
+        register(editor);
+        return {};
       });
     };
 
@@ -36028,76 +36114,381 @@ tinymce.IconManager.add('default', {
 
     var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
-    const setContent = (editor, html) => {
-      editor.focus();
-      editor.undoManager.transact(() => {
-        editor.setContent(html);
-      });
-      editor.selection.setCursorLocation();
-      editor.nodeChanged();
+    const hasProto = (v, constructor, predicate) => {
+      var _a;
+      if (predicate(v, constructor.prototype)) {
+        return true;
+      } else {
+        return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
+      }
     };
-    const getContent = editor => {
-      return editor.getContent({ source_view: true });
+    const typeOf = x => {
+      const t = typeof x;
+      if (x === null) {
+        return 'null';
+      } else if (t === 'object' && Array.isArray(x)) {
+        return 'array';
+      } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
+        return 'string';
+      } else {
+        return t;
+      }
+    };
+    const isType$1 = type => value => typeOf(value) === type;
+    const isSimpleType = type => value => typeof value === type;
+    const isString = isType$1('string');
+    const isBoolean = isSimpleType('boolean');
+    const isNullable = a => a === null || a === undefined;
+    const isNonNullable = a => !isNullable(a);
+    const isFunction = isSimpleType('function');
+    const isNumber = isSimpleType('number');
+
+    const compose1 = (fbc, fab) => a => fbc(fab(a));
+    const constant = value => {
+      return () => {
+        return value;
+      };
+    };
+    const never = constant(false);
+
+    class Optional {
+      constructor(tag, value) {
+        this.tag = tag;
+        this.value = value;
+      }
+      static some(value) {
+        return new Optional(true, value);
+      }
+      static none() {
+        return Optional.singletonNone;
+      }
+      fold(onNone, onSome) {
+        if (this.tag) {
+          return onSome(this.value);
+        } else {
+          return onNone();
+        }
+      }
+      isSome() {
+        return this.tag;
+      }
+      isNone() {
+        return !this.tag;
+      }
+      map(mapper) {
+        if (this.tag) {
+          return Optional.some(mapper(this.value));
+        } else {
+          return Optional.none();
+        }
+      }
+      bind(binder) {
+        if (this.tag) {
+          return binder(this.value);
+        } else {
+          return Optional.none();
+        }
+      }
+      exists(predicate) {
+        return this.tag && predicate(this.value);
+      }
+      forall(predicate) {
+        return !this.tag || predicate(this.value);
+      }
+      filter(predicate) {
+        if (!this.tag || predicate(this.value)) {
+          return this;
+        } else {
+          return Optional.none();
+        }
+      }
+      getOr(replacement) {
+        return this.tag ? this.value : replacement;
+      }
+      or(replacement) {
+        return this.tag ? this : replacement;
+      }
+      getOrThunk(thunk) {
+        return this.tag ? this.value : thunk();
+      }
+      orThunk(thunk) {
+        return this.tag ? this : thunk();
+      }
+      getOrDie(message) {
+        if (!this.tag) {
+          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
+        } else {
+          return this.value;
+        }
+      }
+      static from(value) {
+        return isNonNullable(value) ? Optional.some(value) : Optional.none();
+      }
+      getOrNull() {
+        return this.tag ? this.value : null;
+      }
+      getOrUndefined() {
+        return this.value;
+      }
+      each(worker) {
+        if (this.tag) {
+          worker(this.value);
+        }
+      }
+      toArray() {
+        return this.tag ? [this.value] : [];
+      }
+      toString() {
+        return this.tag ? `some(${ this.value })` : 'none()';
+      }
+    }
+    Optional.singletonNone = new Optional(false);
+
+    const map = (xs, f) => {
+      const len = xs.length;
+      const r = new Array(len);
+      for (let i = 0; i < len; i++) {
+        const x = xs[i];
+        r[i] = f(x, i);
+      }
+      return r;
+    };
+    const each = (xs, f) => {
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        f(x, i);
+      }
+    };
+    const filter = (xs, pred) => {
+      const r = [];
+      for (let i = 0, len = xs.length; i < len; i++) {
+        const x = xs[i];
+        if (pred(x, i)) {
+          r.push(x);
+        }
+      }
+      return r;
     };
 
-    const open = editor => {
-      const editorContent = getContent(editor);
-      editor.windowManager.open({
-        title: 'Source Code',
-        size: 'large',
-        body: {
-          type: 'panel',
-          items: [{
-              type: 'textarea',
-              name: 'code'
-            }]
-        },
-        buttons: [
-          {
-            type: 'cancel',
-            name: 'cancel',
-            text: 'Cancel'
-          },
-          {
-            type: 'submit',
-            name: 'save',
-            text: 'Save',
-            primary: true
-          }
-        ],
-        initialData: { code: editorContent },
-        onSubmit: api => {
-          setContent(editor, api.getData().code);
-          api.close();
+    const DOCUMENT_FRAGMENT = 11;
+    const ELEMENT = 1;
+    const TEXT = 3;
+
+    const fromHtml = (html, scope) => {
+      const doc = scope || document;
+      const div = doc.createElement('div');
+      div.innerHTML = html;
+      if (!div.hasChildNodes() || div.childNodes.length > 1) {
+        const message = 'HTML does not have a single root node';
+        console.error(message, html);
+        throw new Error(message);
+      }
+      return fromDom(div.childNodes[0]);
+    };
+    const fromTag = (tag, scope) => {
+      const doc = scope || document;
+      const node = doc.createElement(tag);
+      return fromDom(node);
+    };
+    const fromText = (text, scope) => {
+      const doc = scope || document;
+      const node = doc.createTextNode(text);
+      return fromDom(node);
+    };
+    const fromDom = node => {
+      if (node === null || node === undefined) {
+        throw new Error('Node cannot be null or undefined');
+      }
+      return { dom: node };
+    };
+    const fromPoint = (docElm, x, y) => Optional.from(docElm.dom.elementFromPoint(x, y)).map(fromDom);
+    const SugarElement = {
+      fromHtml,
+      fromTag,
+      fromText,
+      fromDom,
+      fromPoint
+    };
+
+    const is = (element, selector) => {
+      const dom = element.dom;
+      if (dom.nodeType !== ELEMENT) {
+        return false;
+      } else {
+        const elem = dom;
+        if (elem.matches !== undefined) {
+          return elem.matches(selector);
+        } else if (elem.msMatchesSelector !== undefined) {
+          return elem.msMatchesSelector(selector);
+        } else if (elem.webkitMatchesSelector !== undefined) {
+          return elem.webkitMatchesSelector(selector);
+        } else if (elem.mozMatchesSelector !== undefined) {
+          return elem.mozMatchesSelector(selector);
+        } else {
+          throw new Error('Browser lacks native selectors');
         }
+      }
+    };
+
+    typeof window !== 'undefined' ? window : Function('return this;')();
+
+    const name = element => {
+      const r = element.dom.nodeName;
+      return r.toLowerCase();
+    };
+    const type = element => element.dom.nodeType;
+    const isType = t => element => type(element) === t;
+    const isElement = isType(ELEMENT);
+    const isText = isType(TEXT);
+    const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
+    const isTag = tag => e => isElement(e) && name(e) === tag;
+
+    const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
+    const children$2 = element => map(element.dom.childNodes, SugarElement.fromDom);
+
+    const rawSet = (dom, key, value) => {
+      if (isString(value) || isBoolean(value) || isNumber(value)) {
+        dom.setAttribute(key, value + '');
+      } else {
+        console.error('Invalid call to Attribute.set. Key ', key, ':: Value ', value, ':: Element ', dom);
+        throw new Error('Attribute value was not simple');
+      }
+    };
+    const set = (element, key, value) => {
+      rawSet(element.dom, key, value);
+    };
+    const remove = (element, key) => {
+      element.dom.removeAttribute(key);
+    };
+
+    const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
+    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
+    const getShadowRoot = e => {
+      const r = getRootNode(e);
+      return isShadowRoot(r) ? Optional.some(r) : Optional.none();
+    };
+    const getShadowHost = e => SugarElement.fromDom(e.dom.host);
+
+    const inBody = element => {
+      const dom = isText(element) ? element.dom.parentNode : element.dom;
+      if (dom === undefined || dom === null || dom.ownerDocument === null) {
+        return false;
+      }
+      const doc = dom.ownerDocument;
+      return getShadowRoot(SugarElement.fromDom(dom)).fold(() => doc.body.contains(dom), compose1(inBody, getShadowHost));
+    };
+
+    const ancestor$1 = (scope, predicate, isRoot) => {
+      let element = scope.dom;
+      const stop = isFunction(isRoot) ? isRoot : never;
+      while (element.parentNode) {
+        element = element.parentNode;
+        const el = SugarElement.fromDom(element);
+        if (predicate(el)) {
+          return Optional.some(el);
+        } else if (stop(el)) {
+          break;
+        }
+      }
+      return Optional.none();
+    };
+
+    const ancestor = (scope, selector, isRoot) => ancestor$1(scope, e => is(e, selector), isRoot);
+
+    const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
+
+    const get = (element, property) => {
+      const dom = element.dom;
+      const styles = window.getComputedStyle(dom);
+      const r = styles.getPropertyValue(property);
+      return r === '' && !inBody(element) ? getUnsafeProperty(dom, property) : r;
+    };
+    const getUnsafeProperty = (dom, property) => isSupported(dom) ? dom.style.getPropertyValue(property) : '';
+
+    const getDirection = element => get(element, 'direction') === 'rtl' ? 'rtl' : 'ltr';
+
+    const children$1 = (scope, predicate) => filter(children$2(scope), predicate);
+
+    const children = (scope, selector) => children$1(scope, e => is(e, selector));
+
+    const getParentElement = element => parent(element).filter(isElement);
+    const getNormalizedBlock = (element, isListItem) => {
+      const normalizedElement = isListItem ? ancestor(element, 'ol,ul') : Optional.some(element);
+      return normalizedElement.getOr(element);
+    };
+    const isListItem = isTag('li');
+    const setDirOnElements = (dom, blocks, dir) => {
+      each(blocks, block => {
+        const blockElement = SugarElement.fromDom(block);
+        const isBlockElementListItem = isListItem(blockElement);
+        const normalizedBlock = getNormalizedBlock(blockElement, isBlockElementListItem);
+        const normalizedBlockParent = getParentElement(normalizedBlock);
+        normalizedBlockParent.each(parent => {
+          dom.setStyle(normalizedBlock.dom, 'direction', null);
+          const parentDirection = getDirection(parent);
+          if (parentDirection === dir) {
+            remove(normalizedBlock, 'dir');
+          } else {
+            set(normalizedBlock, 'dir', dir);
+          }
+          if (getDirection(normalizedBlock) !== dir) {
+            dom.setStyle(normalizedBlock.dom, 'direction', dir);
+          }
+          if (isBlockElementListItem) {
+            const listItems = children(normalizedBlock, 'li[dir],li[style]');
+            each(listItems, listItem => {
+              remove(listItem, 'dir');
+              dom.setStyle(listItem.dom, 'direction', null);
+            });
+          }
+        });
       });
+    };
+    const setDir = (editor, dir) => {
+      if (editor.selection.isEditable()) {
+        setDirOnElements(editor.dom, editor.selection.getSelectedBlocks(), dir);
+        editor.nodeChanged();
+      }
     };
 
     const register$1 = editor => {
-      editor.addCommand('mceCodeEditor', () => {
-        open(editor);
+      editor.addCommand('mceDirectionLTR', () => {
+        setDir(editor, 'ltr');
+      });
+      editor.addCommand('mceDirectionRTL', () => {
+        setDir(editor, 'rtl');
       });
     };
 
+    const getNodeChangeHandler = (editor, dir) => api => {
+      const nodeChangeHandler = e => {
+        const element = SugarElement.fromDom(e.element);
+        api.setActive(getDirection(element) === dir);
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChangeHandler);
+      api.setEnabled(editor.selection.isEditable());
+      return () => editor.off('NodeChange', nodeChangeHandler);
+    };
     const register = editor => {
-      const onAction = () => editor.execCommand('mceCodeEditor');
-      editor.ui.registry.addButton('code', {
-        icon: 'sourcecode',
-        tooltip: 'Source code',
-        onAction
+      editor.ui.registry.addToggleButton('ltr', {
+        tooltip: 'Left to right',
+        icon: 'ltr',
+        onAction: () => editor.execCommand('mceDirectionLTR'),
+        onSetup: getNodeChangeHandler(editor, 'ltr')
       });
-      editor.ui.registry.addMenuItem('code', {
-        icon: 'sourcecode',
-        text: 'Source code',
-        onAction
+      editor.ui.registry.addToggleButton('rtl', {
+        tooltip: 'Right to left',
+        icon: 'rtl',
+        onAction: () => editor.execCommand('mceDirectionRTL'),
+        onSetup: getNodeChangeHandler(editor, 'rtl')
       });
     };
 
     var Plugin = () => {
-      global.add('code', editor => {
+      global.add('directionality', editor => {
         register$1(editor);
         register(editor);
-        return {};
       });
     };
 
@@ -38562,397 +38953,6 @@ tinymce.IconManager.add('default', {
             open(editor);
           }
         });
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const hasProto = (v, constructor, predicate) => {
-      var _a;
-      if (predicate(v, constructor.prototype)) {
-        return true;
-      } else {
-        return ((_a = v.constructor) === null || _a === void 0 ? void 0 : _a.name) === constructor.name;
-      }
-    };
-    const typeOf = x => {
-      const t = typeof x;
-      if (x === null) {
-        return 'null';
-      } else if (t === 'object' && Array.isArray(x)) {
-        return 'array';
-      } else if (t === 'object' && hasProto(x, String, (o, proto) => proto.isPrototypeOf(o))) {
-        return 'string';
-      } else {
-        return t;
-      }
-    };
-    const isType$1 = type => value => typeOf(value) === type;
-    const isSimpleType = type => value => typeof value === type;
-    const isString = isType$1('string');
-    const isBoolean = isSimpleType('boolean');
-    const isNullable = a => a === null || a === undefined;
-    const isNonNullable = a => !isNullable(a);
-    const isFunction = isSimpleType('function');
-    const isNumber = isSimpleType('number');
-
-    const compose1 = (fbc, fab) => a => fbc(fab(a));
-    const constant = value => {
-      return () => {
-        return value;
-      };
-    };
-    const never = constant(false);
-
-    class Optional {
-      constructor(tag, value) {
-        this.tag = tag;
-        this.value = value;
-      }
-      static some(value) {
-        return new Optional(true, value);
-      }
-      static none() {
-        return Optional.singletonNone;
-      }
-      fold(onNone, onSome) {
-        if (this.tag) {
-          return onSome(this.value);
-        } else {
-          return onNone();
-        }
-      }
-      isSome() {
-        return this.tag;
-      }
-      isNone() {
-        return !this.tag;
-      }
-      map(mapper) {
-        if (this.tag) {
-          return Optional.some(mapper(this.value));
-        } else {
-          return Optional.none();
-        }
-      }
-      bind(binder) {
-        if (this.tag) {
-          return binder(this.value);
-        } else {
-          return Optional.none();
-        }
-      }
-      exists(predicate) {
-        return this.tag && predicate(this.value);
-      }
-      forall(predicate) {
-        return !this.tag || predicate(this.value);
-      }
-      filter(predicate) {
-        if (!this.tag || predicate(this.value)) {
-          return this;
-        } else {
-          return Optional.none();
-        }
-      }
-      getOr(replacement) {
-        return this.tag ? this.value : replacement;
-      }
-      or(replacement) {
-        return this.tag ? this : replacement;
-      }
-      getOrThunk(thunk) {
-        return this.tag ? this.value : thunk();
-      }
-      orThunk(thunk) {
-        return this.tag ? this : thunk();
-      }
-      getOrDie(message) {
-        if (!this.tag) {
-          throw new Error(message !== null && message !== void 0 ? message : 'Called getOrDie on None');
-        } else {
-          return this.value;
-        }
-      }
-      static from(value) {
-        return isNonNullable(value) ? Optional.some(value) : Optional.none();
-      }
-      getOrNull() {
-        return this.tag ? this.value : null;
-      }
-      getOrUndefined() {
-        return this.value;
-      }
-      each(worker) {
-        if (this.tag) {
-          worker(this.value);
-        }
-      }
-      toArray() {
-        return this.tag ? [this.value] : [];
-      }
-      toString() {
-        return this.tag ? `some(${ this.value })` : 'none()';
-      }
-    }
-    Optional.singletonNone = new Optional(false);
-
-    const map = (xs, f) => {
-      const len = xs.length;
-      const r = new Array(len);
-      for (let i = 0; i < len; i++) {
-        const x = xs[i];
-        r[i] = f(x, i);
-      }
-      return r;
-    };
-    const each = (xs, f) => {
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        f(x, i);
-      }
-    };
-    const filter = (xs, pred) => {
-      const r = [];
-      for (let i = 0, len = xs.length; i < len; i++) {
-        const x = xs[i];
-        if (pred(x, i)) {
-          r.push(x);
-        }
-      }
-      return r;
-    };
-
-    const DOCUMENT_FRAGMENT = 11;
-    const ELEMENT = 1;
-    const TEXT = 3;
-
-    const fromHtml = (html, scope) => {
-      const doc = scope || document;
-      const div = doc.createElement('div');
-      div.innerHTML = html;
-      if (!div.hasChildNodes() || div.childNodes.length > 1) {
-        const message = 'HTML does not have a single root node';
-        console.error(message, html);
-        throw new Error(message);
-      }
-      return fromDom(div.childNodes[0]);
-    };
-    const fromTag = (tag, scope) => {
-      const doc = scope || document;
-      const node = doc.createElement(tag);
-      return fromDom(node);
-    };
-    const fromText = (text, scope) => {
-      const doc = scope || document;
-      const node = doc.createTextNode(text);
-      return fromDom(node);
-    };
-    const fromDom = node => {
-      if (node === null || node === undefined) {
-        throw new Error('Node cannot be null or undefined');
-      }
-      return { dom: node };
-    };
-    const fromPoint = (docElm, x, y) => Optional.from(docElm.dom.elementFromPoint(x, y)).map(fromDom);
-    const SugarElement = {
-      fromHtml,
-      fromTag,
-      fromText,
-      fromDom,
-      fromPoint
-    };
-
-    const is = (element, selector) => {
-      const dom = element.dom;
-      if (dom.nodeType !== ELEMENT) {
-        return false;
-      } else {
-        const elem = dom;
-        if (elem.matches !== undefined) {
-          return elem.matches(selector);
-        } else if (elem.msMatchesSelector !== undefined) {
-          return elem.msMatchesSelector(selector);
-        } else if (elem.webkitMatchesSelector !== undefined) {
-          return elem.webkitMatchesSelector(selector);
-        } else if (elem.mozMatchesSelector !== undefined) {
-          return elem.mozMatchesSelector(selector);
-        } else {
-          throw new Error('Browser lacks native selectors');
-        }
-      }
-    };
-
-    typeof window !== 'undefined' ? window : Function('return this;')();
-
-    const name = element => {
-      const r = element.dom.nodeName;
-      return r.toLowerCase();
-    };
-    const type = element => element.dom.nodeType;
-    const isType = t => element => type(element) === t;
-    const isElement = isType(ELEMENT);
-    const isText = isType(TEXT);
-    const isDocumentFragment = isType(DOCUMENT_FRAGMENT);
-    const isTag = tag => e => isElement(e) && name(e) === tag;
-
-    const parent = element => Optional.from(element.dom.parentNode).map(SugarElement.fromDom);
-    const children$2 = element => map(element.dom.childNodes, SugarElement.fromDom);
-
-    const rawSet = (dom, key, value) => {
-      if (isString(value) || isBoolean(value) || isNumber(value)) {
-        dom.setAttribute(key, value + '');
-      } else {
-        console.error('Invalid call to Attribute.set. Key ', key, ':: Value ', value, ':: Element ', dom);
-        throw new Error('Attribute value was not simple');
-      }
-    };
-    const set = (element, key, value) => {
-      rawSet(element.dom, key, value);
-    };
-    const remove = (element, key) => {
-      element.dom.removeAttribute(key);
-    };
-
-    const isShadowRoot = dos => isDocumentFragment(dos) && isNonNullable(dos.dom.host);
-    const getRootNode = e => SugarElement.fromDom(e.dom.getRootNode());
-    const getShadowRoot = e => {
-      const r = getRootNode(e);
-      return isShadowRoot(r) ? Optional.some(r) : Optional.none();
-    };
-    const getShadowHost = e => SugarElement.fromDom(e.dom.host);
-
-    const inBody = element => {
-      const dom = isText(element) ? element.dom.parentNode : element.dom;
-      if (dom === undefined || dom === null || dom.ownerDocument === null) {
-        return false;
-      }
-      const doc = dom.ownerDocument;
-      return getShadowRoot(SugarElement.fromDom(dom)).fold(() => doc.body.contains(dom), compose1(inBody, getShadowHost));
-    };
-
-    const ancestor$1 = (scope, predicate, isRoot) => {
-      let element = scope.dom;
-      const stop = isFunction(isRoot) ? isRoot : never;
-      while (element.parentNode) {
-        element = element.parentNode;
-        const el = SugarElement.fromDom(element);
-        if (predicate(el)) {
-          return Optional.some(el);
-        } else if (stop(el)) {
-          break;
-        }
-      }
-      return Optional.none();
-    };
-
-    const ancestor = (scope, selector, isRoot) => ancestor$1(scope, e => is(e, selector), isRoot);
-
-    const isSupported = dom => dom.style !== undefined && isFunction(dom.style.getPropertyValue);
-
-    const get = (element, property) => {
-      const dom = element.dom;
-      const styles = window.getComputedStyle(dom);
-      const r = styles.getPropertyValue(property);
-      return r === '' && !inBody(element) ? getUnsafeProperty(dom, property) : r;
-    };
-    const getUnsafeProperty = (dom, property) => isSupported(dom) ? dom.style.getPropertyValue(property) : '';
-
-    const getDirection = element => get(element, 'direction') === 'rtl' ? 'rtl' : 'ltr';
-
-    const children$1 = (scope, predicate) => filter(children$2(scope), predicate);
-
-    const children = (scope, selector) => children$1(scope, e => is(e, selector));
-
-    const getParentElement = element => parent(element).filter(isElement);
-    const getNormalizedBlock = (element, isListItem) => {
-      const normalizedElement = isListItem ? ancestor(element, 'ol,ul') : Optional.some(element);
-      return normalizedElement.getOr(element);
-    };
-    const isListItem = isTag('li');
-    const setDirOnElements = (dom, blocks, dir) => {
-      each(blocks, block => {
-        const blockElement = SugarElement.fromDom(block);
-        const isBlockElementListItem = isListItem(blockElement);
-        const normalizedBlock = getNormalizedBlock(blockElement, isBlockElementListItem);
-        const normalizedBlockParent = getParentElement(normalizedBlock);
-        normalizedBlockParent.each(parent => {
-          dom.setStyle(normalizedBlock.dom, 'direction', null);
-          const parentDirection = getDirection(parent);
-          if (parentDirection === dir) {
-            remove(normalizedBlock, 'dir');
-          } else {
-            set(normalizedBlock, 'dir', dir);
-          }
-          if (getDirection(normalizedBlock) !== dir) {
-            dom.setStyle(normalizedBlock.dom, 'direction', dir);
-          }
-          if (isBlockElementListItem) {
-            const listItems = children(normalizedBlock, 'li[dir],li[style]');
-            each(listItems, listItem => {
-              remove(listItem, 'dir');
-              dom.setStyle(listItem.dom, 'direction', null);
-            });
-          }
-        });
-      });
-    };
-    const setDir = (editor, dir) => {
-      if (editor.selection.isEditable()) {
-        setDirOnElements(editor.dom, editor.selection.getSelectedBlocks(), dir);
-        editor.nodeChanged();
-      }
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mceDirectionLTR', () => {
-        setDir(editor, 'ltr');
-      });
-      editor.addCommand('mceDirectionRTL', () => {
-        setDir(editor, 'rtl');
-      });
-    };
-
-    const getNodeChangeHandler = (editor, dir) => api => {
-      const nodeChangeHandler = e => {
-        const element = SugarElement.fromDom(e.element);
-        api.setActive(getDirection(element) === dir);
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChangeHandler);
-      api.setEnabled(editor.selection.isEditable());
-      return () => editor.off('NodeChange', nodeChangeHandler);
-    };
-    const register = editor => {
-      editor.ui.registry.addToggleButton('ltr', {
-        tooltip: 'Left to right',
-        icon: 'ltr',
-        onAction: () => editor.execCommand('mceDirectionLTR'),
-        onSetup: getNodeChangeHandler(editor, 'ltr')
-      });
-      editor.ui.registry.addToggleButton('rtl', {
-        tooltip: 'Right to left',
-        icon: 'rtl',
-        onAction: () => editor.execCommand('mceDirectionRTL'),
-        onSetup: getNodeChangeHandler(editor, 'rtl')
-      });
-    };
-
-    var Plugin = () => {
-      global.add('directionality', editor => {
-        register$1(editor);
-        register(editor);
       });
     };
 
@@ -43257,6 +43257,194 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const option = name => editor => editor.options.get(name);
+    const register$2 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('insertdatetime_dateformat', {
+        processor: 'string',
+        default: editor.translate('%Y-%m-%d')
+      });
+      registerOption('insertdatetime_timeformat', {
+        processor: 'string',
+        default: editor.translate('%H:%M:%S')
+      });
+      registerOption('insertdatetime_formats', {
+        processor: 'string[]',
+        default: [
+          '%H:%M:%S',
+          '%Y-%m-%d',
+          '%I:%M:%S %p',
+          '%D'
+        ]
+      });
+      registerOption('insertdatetime_element', {
+        processor: 'boolean',
+        default: false
+      });
+    };
+    const getDateFormat = option('insertdatetime_dateformat');
+    const getTimeFormat = option('insertdatetime_timeformat');
+    const getFormats = option('insertdatetime_formats');
+    const shouldInsertTimeElement = option('insertdatetime_element');
+    const getDefaultDateTime = editor => {
+      const formats = getFormats(editor);
+      return formats.length > 0 ? formats[0] : getTimeFormat(editor);
+    };
+
+    const daysShort = 'Sun Mon Tue Wed Thu Fri Sat Sun'.split(' ');
+    const daysLong = 'Sunday Monday Tuesday Wednesday Thursday Friday Saturday Sunday'.split(' ');
+    const monthsShort = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
+    const monthsLong = 'January February March April May June July August September October November December'.split(' ');
+    const addZeros = (value, len) => {
+      value = '' + value;
+      if (value.length < len) {
+        for (let i = 0; i < len - value.length; i++) {
+          value = '0' + value;
+        }
+      }
+      return value;
+    };
+    const getDateTime = (editor, fmt, date = new Date()) => {
+      fmt = fmt.replace('%D', '%m/%d/%Y');
+      fmt = fmt.replace('%r', '%I:%M:%S %p');
+      fmt = fmt.replace('%Y', '' + date.getFullYear());
+      fmt = fmt.replace('%y', '' + date.getYear());
+      fmt = fmt.replace('%m', addZeros(date.getMonth() + 1, 2));
+      fmt = fmt.replace('%d', addZeros(date.getDate(), 2));
+      fmt = fmt.replace('%H', '' + addZeros(date.getHours(), 2));
+      fmt = fmt.replace('%M', '' + addZeros(date.getMinutes(), 2));
+      fmt = fmt.replace('%S', '' + addZeros(date.getSeconds(), 2));
+      fmt = fmt.replace('%I', '' + ((date.getHours() + 11) % 12 + 1));
+      fmt = fmt.replace('%p', '' + (date.getHours() < 12 ? 'AM' : 'PM'));
+      fmt = fmt.replace('%B', '' + editor.translate(monthsLong[date.getMonth()]));
+      fmt = fmt.replace('%b', '' + editor.translate(monthsShort[date.getMonth()]));
+      fmt = fmt.replace('%A', '' + editor.translate(daysLong[date.getDay()]));
+      fmt = fmt.replace('%a', '' + editor.translate(daysShort[date.getDay()]));
+      fmt = fmt.replace('%%', '%');
+      return fmt;
+    };
+    const updateElement = (editor, timeElm, computerTime, userTime) => {
+      const newTimeElm = editor.dom.create('time', { datetime: computerTime }, userTime);
+      editor.dom.replace(newTimeElm, timeElm);
+      editor.selection.select(newTimeElm, true);
+      editor.selection.collapse(false);
+    };
+    const insertDateTime = (editor, format) => {
+      if (shouldInsertTimeElement(editor) && editor.selection.isEditable()) {
+        const userTime = getDateTime(editor, format);
+        let computerTime;
+        if (/%[HMSIp]/.test(format)) {
+          computerTime = getDateTime(editor, '%Y-%m-%dT%H:%M');
+        } else {
+          computerTime = getDateTime(editor, '%Y-%m-%d');
+        }
+        const timeElm = editor.dom.getParent(editor.selection.getStart(), 'time');
+        if (timeElm) {
+          updateElement(editor, timeElm, computerTime, userTime);
+        } else {
+          editor.insertContent('<time datetime="' + computerTime + '">' + userTime + '</time>');
+        }
+      } else {
+        editor.insertContent(getDateTime(editor, format));
+      }
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mceInsertDate', (_ui, value) => {
+        insertDateTime(editor, value !== null && value !== void 0 ? value : getDateFormat(editor));
+      });
+      editor.addCommand('mceInsertTime', (_ui, value) => {
+        insertDateTime(editor, value !== null && value !== void 0 ? value : getTimeFormat(editor));
+      });
+    };
+
+    const Cell = initial => {
+      let value = initial;
+      const get = () => {
+        return value;
+      };
+      const set = v => {
+        value = v;
+      };
+      return {
+        get,
+        set
+      };
+    };
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    const onSetupEditable = editor => api => {
+      const nodeChanged = () => {
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChanged);
+      nodeChanged();
+      return () => {
+        editor.off('NodeChange', nodeChanged);
+      };
+    };
+    const register = editor => {
+      const formats = getFormats(editor);
+      const defaultFormat = Cell(getDefaultDateTime(editor));
+      const insertDateTime = format => editor.execCommand('mceInsertDate', false, format);
+      editor.ui.registry.addSplitButton('insertdatetime', {
+        icon: 'insert-time',
+        tooltip: 'Insert date/time',
+        select: value => value === defaultFormat.get(),
+        fetch: done => {
+          done(global.map(formats, format => ({
+            type: 'choiceitem',
+            text: getDateTime(editor, format),
+            value: format
+          })));
+        },
+        onAction: _api => {
+          insertDateTime(defaultFormat.get());
+        },
+        onItemAction: (_api, value) => {
+          defaultFormat.set(value);
+          insertDateTime(value);
+        },
+        onSetup: onSetupEditable(editor)
+      });
+      const makeMenuItemHandler = format => () => {
+        defaultFormat.set(format);
+        insertDateTime(format);
+      };
+      editor.ui.registry.addNestedMenuItem('insertdatetime', {
+        icon: 'insert-time',
+        text: 'Date/time',
+        getSubmenuItems: () => global.map(formats, format => ({
+          type: 'menuitem',
+          text: getDateTime(editor, format),
+          onAction: makeMenuItemHandler(format)
+        })),
+        onSetup: onSetupEditable(editor)
+      });
+    };
+
+    var Plugin = () => {
+      global$1.add('insertdatetime', editor => {
+        register$2(editor);
+        register$1(editor);
+        register(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
     var global$4 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
     const hasProto = (v, constructor, predicate) => {
@@ -43589,194 +43777,6 @@ tinymce.IconManager.add('default', {
         register(editor);
         setup(editor);
         return get(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const option = name => editor => editor.options.get(name);
-    const register$2 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('insertdatetime_dateformat', {
-        processor: 'string',
-        default: editor.translate('%Y-%m-%d')
-      });
-      registerOption('insertdatetime_timeformat', {
-        processor: 'string',
-        default: editor.translate('%H:%M:%S')
-      });
-      registerOption('insertdatetime_formats', {
-        processor: 'string[]',
-        default: [
-          '%H:%M:%S',
-          '%Y-%m-%d',
-          '%I:%M:%S %p',
-          '%D'
-        ]
-      });
-      registerOption('insertdatetime_element', {
-        processor: 'boolean',
-        default: false
-      });
-    };
-    const getDateFormat = option('insertdatetime_dateformat');
-    const getTimeFormat = option('insertdatetime_timeformat');
-    const getFormats = option('insertdatetime_formats');
-    const shouldInsertTimeElement = option('insertdatetime_element');
-    const getDefaultDateTime = editor => {
-      const formats = getFormats(editor);
-      return formats.length > 0 ? formats[0] : getTimeFormat(editor);
-    };
-
-    const daysShort = 'Sun Mon Tue Wed Thu Fri Sat Sun'.split(' ');
-    const daysLong = 'Sunday Monday Tuesday Wednesday Thursday Friday Saturday Sunday'.split(' ');
-    const monthsShort = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
-    const monthsLong = 'January February March April May June July August September October November December'.split(' ');
-    const addZeros = (value, len) => {
-      value = '' + value;
-      if (value.length < len) {
-        for (let i = 0; i < len - value.length; i++) {
-          value = '0' + value;
-        }
-      }
-      return value;
-    };
-    const getDateTime = (editor, fmt, date = new Date()) => {
-      fmt = fmt.replace('%D', '%m/%d/%Y');
-      fmt = fmt.replace('%r', '%I:%M:%S %p');
-      fmt = fmt.replace('%Y', '' + date.getFullYear());
-      fmt = fmt.replace('%y', '' + date.getYear());
-      fmt = fmt.replace('%m', addZeros(date.getMonth() + 1, 2));
-      fmt = fmt.replace('%d', addZeros(date.getDate(), 2));
-      fmt = fmt.replace('%H', '' + addZeros(date.getHours(), 2));
-      fmt = fmt.replace('%M', '' + addZeros(date.getMinutes(), 2));
-      fmt = fmt.replace('%S', '' + addZeros(date.getSeconds(), 2));
-      fmt = fmt.replace('%I', '' + ((date.getHours() + 11) % 12 + 1));
-      fmt = fmt.replace('%p', '' + (date.getHours() < 12 ? 'AM' : 'PM'));
-      fmt = fmt.replace('%B', '' + editor.translate(monthsLong[date.getMonth()]));
-      fmt = fmt.replace('%b', '' + editor.translate(monthsShort[date.getMonth()]));
-      fmt = fmt.replace('%A', '' + editor.translate(daysLong[date.getDay()]));
-      fmt = fmt.replace('%a', '' + editor.translate(daysShort[date.getDay()]));
-      fmt = fmt.replace('%%', '%');
-      return fmt;
-    };
-    const updateElement = (editor, timeElm, computerTime, userTime) => {
-      const newTimeElm = editor.dom.create('time', { datetime: computerTime }, userTime);
-      editor.dom.replace(newTimeElm, timeElm);
-      editor.selection.select(newTimeElm, true);
-      editor.selection.collapse(false);
-    };
-    const insertDateTime = (editor, format) => {
-      if (shouldInsertTimeElement(editor) && editor.selection.isEditable()) {
-        const userTime = getDateTime(editor, format);
-        let computerTime;
-        if (/%[HMSIp]/.test(format)) {
-          computerTime = getDateTime(editor, '%Y-%m-%dT%H:%M');
-        } else {
-          computerTime = getDateTime(editor, '%Y-%m-%d');
-        }
-        const timeElm = editor.dom.getParent(editor.selection.getStart(), 'time');
-        if (timeElm) {
-          updateElement(editor, timeElm, computerTime, userTime);
-        } else {
-          editor.insertContent('<time datetime="' + computerTime + '">' + userTime + '</time>');
-        }
-      } else {
-        editor.insertContent(getDateTime(editor, format));
-      }
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mceInsertDate', (_ui, value) => {
-        insertDateTime(editor, value !== null && value !== void 0 ? value : getDateFormat(editor));
-      });
-      editor.addCommand('mceInsertTime', (_ui, value) => {
-        insertDateTime(editor, value !== null && value !== void 0 ? value : getTimeFormat(editor));
-      });
-    };
-
-    const Cell = initial => {
-      let value = initial;
-      const get = () => {
-        return value;
-      };
-      const set = v => {
-        value = v;
-      };
-      return {
-        get,
-        set
-      };
-    };
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    const onSetupEditable = editor => api => {
-      const nodeChanged = () => {
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChanged);
-      nodeChanged();
-      return () => {
-        editor.off('NodeChange', nodeChanged);
-      };
-    };
-    const register = editor => {
-      const formats = getFormats(editor);
-      const defaultFormat = Cell(getDefaultDateTime(editor));
-      const insertDateTime = format => editor.execCommand('mceInsertDate', false, format);
-      editor.ui.registry.addSplitButton('insertdatetime', {
-        icon: 'insert-time',
-        tooltip: 'Insert date/time',
-        select: value => value === defaultFormat.get(),
-        fetch: done => {
-          done(global.map(formats, format => ({
-            type: 'choiceitem',
-            text: getDateTime(editor, format),
-            value: format
-          })));
-        },
-        onAction: _api => {
-          insertDateTime(defaultFormat.get());
-        },
-        onItemAction: (_api, value) => {
-          defaultFormat.set(value);
-          insertDateTime(value);
-        },
-        onSetup: onSetupEditable(editor)
-      });
-      const makeMenuItemHandler = format => () => {
-        defaultFormat.set(format);
-        insertDateTime(format);
-      };
-      editor.ui.registry.addNestedMenuItem('insertdatetime', {
-        icon: 'insert-time',
-        text: 'Date/time',
-        getSubmenuItems: () => global.map(formats, format => ({
-          type: 'menuitem',
-          text: getDateTime(editor, format),
-          onAction: makeMenuItemHandler(format)
-        })),
-        onSetup: onSetupEditable(editor)
-      });
-    };
-
-    var Plugin = () => {
-      global$1.add('insertdatetime', editor => {
-        register$2(editor);
-        register$1(editor);
-        register(editor);
       });
     };
 

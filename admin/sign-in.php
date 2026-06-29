@@ -34,6 +34,52 @@ Contact: phoye@nextiva.com
             window.top.location.replace(window.self.location.href);
         }
 
+        // Check if cookies exist
+        let nccLocation = "";
+        let nccToken = "";
+        let tenantId = "";
+        let username = "";
+        let userProfile = "";
+        const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
+        cookies.forEach(cookie => {
+            if (cookie.startsWith("nccLocation=")) {
+                nccLocation = cookie.substring(12);
+            } else if (cookie.startsWith("nccToken=")) {
+                nccToken = cookie.substring(9);
+            } else if (cookie.startsWith("tenantId=")) {
+                tenantId = cookie.substring(9);
+            } else if (cookie.startsWith("username=")) {
+                username = cookie.substring(9);
+            } else if (cookie.startsWith("userProfile=")) {
+                userProfile = cookie.substring(12);
+            }
+        });
+
+        if (
+            nccLocation &&
+            nccToken
+        ) {
+            let xhr = new XMLHttpRequest();
+            xhr.withCredentials = true;
+
+            xhr.open("POST", `${nccLocation}/users/api/logout`);
+            xhr.setRequestHeader("Authorization", nccToken);
+
+            try {
+                xhr.send();
+            } catch (error) {
+                Swal.fire({
+                    text: "Sorry, something went wrong logging you out.",
+                    icon: "error",
+                    buttonsStyling: false,
+                    confirmButtonText: "Ok, got it!",
+                    customClass: {
+                        confirmButton: "btn btn-primary"
+                    }
+                });
+            }
+        }
+
         document.cookie = "nccLocation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "nccToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "tenantId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
