@@ -33721,6 +33721,186 @@ tinymce.IconManager.add('default', {
  */
 
 (function () {
+    'use strict';
+
+    const Cell = initial => {
+      let value = initial;
+      const get = () => {
+        return value;
+      };
+      const set = v => {
+        value = v;
+      };
+      return {
+        get,
+        set
+      };
+    };
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    var global = tinymce.util.Tools.resolve('tinymce.Env');
+
+    const fireResizeEditor = editor => editor.dispatch('ResizeEditor');
+
+    const option = name => editor => editor.options.get(name);
+    const register$1 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('autoresize_overflow_padding', {
+        processor: 'number',
+        default: 1
+      });
+      registerOption('autoresize_bottom_margin', {
+        processor: 'number',
+        default: 50
+      });
+    };
+    const getMinHeight = option('min_height');
+    const getMaxHeight = option('max_height');
+    const getAutoResizeOverflowPadding = option('autoresize_overflow_padding');
+    const getAutoResizeBottomMargin = option('autoresize_bottom_margin');
+
+    const isFullscreen = editor => editor.plugins.fullscreen && editor.plugins.fullscreen.isFullscreen();
+    const toggleScrolling = (editor, state) => {
+      const body = editor.getBody();
+      if (body) {
+        body.style.overflowY = state ? '' : 'hidden';
+        if (!state) {
+          body.scrollTop = 0;
+        }
+      }
+    };
+    const parseCssValueToInt = (dom, elm, name, computed) => {
+      var _a;
+      const value = parseInt((_a = dom.getStyle(elm, name, computed)) !== null && _a !== void 0 ? _a : '', 10);
+      return isNaN(value) ? 0 : value;
+    };
+    const shouldScrollIntoView = trigger => {
+      if ((trigger === null || trigger === void 0 ? void 0 : trigger.type.toLowerCase()) === 'setcontent') {
+        const setContentEvent = trigger;
+        return setContentEvent.selection === true || setContentEvent.paste === true;
+      } else {
+        return false;
+      }
+    };
+    const resize = (editor, oldSize, trigger, getExtraMarginBottom) => {
+      var _a;
+      const dom = editor.dom;
+      const doc = editor.getDoc();
+      if (!doc) {
+        return;
+      }
+      if (isFullscreen(editor)) {
+        toggleScrolling(editor, true);
+        return;
+      }
+      const docEle = doc.documentElement;
+      const resizeBottomMargin = getExtraMarginBottom ? getExtraMarginBottom() : getAutoResizeOverflowPadding(editor);
+      const minHeight = (_a = getMinHeight(editor)) !== null && _a !== void 0 ? _a : editor.getElement().offsetHeight;
+      let resizeHeight = minHeight;
+      const marginTop = parseCssValueToInt(dom, docEle, 'margin-top', true);
+      const marginBottom = parseCssValueToInt(dom, docEle, 'margin-bottom', true);
+      let contentHeight = docEle.offsetHeight + marginTop + marginBottom + resizeBottomMargin;
+      if (contentHeight < 0) {
+        contentHeight = 0;
+      }
+      const containerHeight = editor.getContainer().offsetHeight;
+      const contentAreaHeight = editor.getContentAreaContainer().offsetHeight;
+      const chromeHeight = containerHeight - contentAreaHeight;
+      if (contentHeight + chromeHeight > minHeight) {
+        resizeHeight = contentHeight + chromeHeight;
+      }
+      const maxHeight = getMaxHeight(editor);
+      if (maxHeight && resizeHeight > maxHeight) {
+        resizeHeight = maxHeight;
+        toggleScrolling(editor, true);
+      } else {
+        toggleScrolling(editor, false);
+      }
+      const old = oldSize.get();
+      if (old.set) {
+        editor.dom.setStyles(editor.getDoc().documentElement, { 'min-height': 0 });
+        editor.dom.setStyles(editor.getBody(), { 'min-height': 'inherit' });
+      }
+      if (resizeHeight !== old.totalHeight && (contentHeight - resizeBottomMargin !== old.contentHeight || !old.set)) {
+        const deltaSize = resizeHeight - old.totalHeight;
+        dom.setStyle(editor.getContainer(), 'height', resizeHeight + 'px');
+        oldSize.set({
+          totalHeight: resizeHeight,
+          contentHeight,
+          set: true
+        });
+        fireResizeEditor(editor);
+        if (global.browser.isSafari() && (global.os.isMacOS() || global.os.isiOS())) {
+          const win = editor.getWin();
+          win.scrollTo(win.pageXOffset, win.pageYOffset);
+        }
+        if (editor.hasFocus() && shouldScrollIntoView(trigger)) {
+          editor.selection.scrollIntoView();
+        }
+        if ((global.browser.isSafari() || global.browser.isChromium()) && deltaSize < 0) {
+          resize(editor, oldSize, trigger, getExtraMarginBottom);
+        }
+      }
+    };
+    const setup = (editor, oldSize) => {
+      const getExtraMarginBottom = () => getAutoResizeBottomMargin(editor);
+      editor.on('init', e => {
+        const overflowPadding = getAutoResizeOverflowPadding(editor);
+        const dom = editor.dom;
+        dom.setStyles(editor.getDoc().documentElement, { height: 'auto' });
+        if (global.browser.isEdge() || global.browser.isIE()) {
+          dom.setStyles(editor.getBody(), {
+            'paddingLeft': overflowPadding,
+            'paddingRight': overflowPadding,
+            'min-height': 0
+          });
+        } else {
+          dom.setStyles(editor.getBody(), {
+            paddingLeft: overflowPadding,
+            paddingRight: overflowPadding
+          });
+        }
+        resize(editor, oldSize, e, getExtraMarginBottom);
+      });
+      editor.on('NodeChange SetContent keyup FullscreenStateChanged ResizeContent', e => {
+        resize(editor, oldSize, e, getExtraMarginBottom);
+      });
+    };
+
+    const register = (editor, oldSize) => {
+      editor.addCommand('mceAutoResize', () => {
+        resize(editor, oldSize);
+      });
+    };
+
+    var Plugin = () => {
+      global$1.add('autoresize', editor => {
+        register$1(editor);
+        if (!editor.options.isSet('resize')) {
+          editor.options.set('resize', false);
+        }
+        if (!editor.inline) {
+          const oldSize = Cell({
+            totalHeight: 0,
+            contentHeight: 0,
+            set: false
+          });
+          register(editor, oldSize);
+          setup(editor, oldSize);
+        }
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
   'use strict';
 
   var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
@@ -33942,186 +34122,6 @@ tinymce.IconManager.add('default', {
   };
 
   Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    const Cell = initial => {
-      let value = initial;
-      const get = () => {
-        return value;
-      };
-      const set = v => {
-        value = v;
-      };
-      return {
-        get,
-        set
-      };
-    };
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    var global = tinymce.util.Tools.resolve('tinymce.Env');
-
-    const fireResizeEditor = editor => editor.dispatch('ResizeEditor');
-
-    const option = name => editor => editor.options.get(name);
-    const register$1 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('autoresize_overflow_padding', {
-        processor: 'number',
-        default: 1
-      });
-      registerOption('autoresize_bottom_margin', {
-        processor: 'number',
-        default: 50
-      });
-    };
-    const getMinHeight = option('min_height');
-    const getMaxHeight = option('max_height');
-    const getAutoResizeOverflowPadding = option('autoresize_overflow_padding');
-    const getAutoResizeBottomMargin = option('autoresize_bottom_margin');
-
-    const isFullscreen = editor => editor.plugins.fullscreen && editor.plugins.fullscreen.isFullscreen();
-    const toggleScrolling = (editor, state) => {
-      const body = editor.getBody();
-      if (body) {
-        body.style.overflowY = state ? '' : 'hidden';
-        if (!state) {
-          body.scrollTop = 0;
-        }
-      }
-    };
-    const parseCssValueToInt = (dom, elm, name, computed) => {
-      var _a;
-      const value = parseInt((_a = dom.getStyle(elm, name, computed)) !== null && _a !== void 0 ? _a : '', 10);
-      return isNaN(value) ? 0 : value;
-    };
-    const shouldScrollIntoView = trigger => {
-      if ((trigger === null || trigger === void 0 ? void 0 : trigger.type.toLowerCase()) === 'setcontent') {
-        const setContentEvent = trigger;
-        return setContentEvent.selection === true || setContentEvent.paste === true;
-      } else {
-        return false;
-      }
-    };
-    const resize = (editor, oldSize, trigger, getExtraMarginBottom) => {
-      var _a;
-      const dom = editor.dom;
-      const doc = editor.getDoc();
-      if (!doc) {
-        return;
-      }
-      if (isFullscreen(editor)) {
-        toggleScrolling(editor, true);
-        return;
-      }
-      const docEle = doc.documentElement;
-      const resizeBottomMargin = getExtraMarginBottom ? getExtraMarginBottom() : getAutoResizeOverflowPadding(editor);
-      const minHeight = (_a = getMinHeight(editor)) !== null && _a !== void 0 ? _a : editor.getElement().offsetHeight;
-      let resizeHeight = minHeight;
-      const marginTop = parseCssValueToInt(dom, docEle, 'margin-top', true);
-      const marginBottom = parseCssValueToInt(dom, docEle, 'margin-bottom', true);
-      let contentHeight = docEle.offsetHeight + marginTop + marginBottom + resizeBottomMargin;
-      if (contentHeight < 0) {
-        contentHeight = 0;
-      }
-      const containerHeight = editor.getContainer().offsetHeight;
-      const contentAreaHeight = editor.getContentAreaContainer().offsetHeight;
-      const chromeHeight = containerHeight - contentAreaHeight;
-      if (contentHeight + chromeHeight > minHeight) {
-        resizeHeight = contentHeight + chromeHeight;
-      }
-      const maxHeight = getMaxHeight(editor);
-      if (maxHeight && resizeHeight > maxHeight) {
-        resizeHeight = maxHeight;
-        toggleScrolling(editor, true);
-      } else {
-        toggleScrolling(editor, false);
-      }
-      const old = oldSize.get();
-      if (old.set) {
-        editor.dom.setStyles(editor.getDoc().documentElement, { 'min-height': 0 });
-        editor.dom.setStyles(editor.getBody(), { 'min-height': 'inherit' });
-      }
-      if (resizeHeight !== old.totalHeight && (contentHeight - resizeBottomMargin !== old.contentHeight || !old.set)) {
-        const deltaSize = resizeHeight - old.totalHeight;
-        dom.setStyle(editor.getContainer(), 'height', resizeHeight + 'px');
-        oldSize.set({
-          totalHeight: resizeHeight,
-          contentHeight,
-          set: true
-        });
-        fireResizeEditor(editor);
-        if (global.browser.isSafari() && (global.os.isMacOS() || global.os.isiOS())) {
-          const win = editor.getWin();
-          win.scrollTo(win.pageXOffset, win.pageYOffset);
-        }
-        if (editor.hasFocus() && shouldScrollIntoView(trigger)) {
-          editor.selection.scrollIntoView();
-        }
-        if ((global.browser.isSafari() || global.browser.isChromium()) && deltaSize < 0) {
-          resize(editor, oldSize, trigger, getExtraMarginBottom);
-        }
-      }
-    };
-    const setup = (editor, oldSize) => {
-      const getExtraMarginBottom = () => getAutoResizeBottomMargin(editor);
-      editor.on('init', e => {
-        const overflowPadding = getAutoResizeOverflowPadding(editor);
-        const dom = editor.dom;
-        dom.setStyles(editor.getDoc().documentElement, { height: 'auto' });
-        if (global.browser.isEdge() || global.browser.isIE()) {
-          dom.setStyles(editor.getBody(), {
-            'paddingLeft': overflowPadding,
-            'paddingRight': overflowPadding,
-            'min-height': 0
-          });
-        } else {
-          dom.setStyles(editor.getBody(), {
-            paddingLeft: overflowPadding,
-            paddingRight: overflowPadding
-          });
-        }
-        resize(editor, oldSize, e, getExtraMarginBottom);
-      });
-      editor.on('NodeChange SetContent keyup FullscreenStateChanged ResizeContent', e => {
-        resize(editor, oldSize, e, getExtraMarginBottom);
-      });
-    };
-
-    const register = (editor, oldSize) => {
-      editor.addCommand('mceAutoResize', () => {
-        resize(editor, oldSize);
-      });
-    };
-
-    var Plugin = () => {
-      global$1.add('autoresize', editor => {
-        register$1(editor);
-        if (!editor.options.isSet('resize')) {
-          editor.options.set('resize', false);
-        }
-        if (!editor.inline) {
-          const oldSize = Cell({
-            totalHeight: 0,
-            contentHeight: 0,
-            set: false
-          });
-          register(editor, oldSize);
-          setup(editor, oldSize);
-        }
-      });
-    };
-
-    Plugin();
 
 })();
 
@@ -48517,6 +48517,124 @@ tinymce.IconManager.add('default', {
 
     var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
+    var global = tinymce.util.Tools.resolve('tinymce.Env');
+
+    const option = name => editor => editor.options.get(name);
+    const register$2 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('pagebreak_separator', {
+        processor: 'string',
+        default: '<!-- pagebreak -->'
+      });
+      registerOption('pagebreak_split_block', {
+        processor: 'boolean',
+        default: false
+      });
+    };
+    const getSeparatorHtml = option('pagebreak_separator');
+    const shouldSplitBlock = option('pagebreak_split_block');
+
+    const pageBreakClass = 'mce-pagebreak';
+    const getPlaceholderHtml = shouldSplitBlock => {
+      const html = `<img src="${ global.transparentSrc }" class="${ pageBreakClass }" data-mce-resize="false" data-mce-placeholder />`;
+      return shouldSplitBlock ? `<p>${ html }</p>` : html;
+    };
+    const setup$1 = editor => {
+      const separatorHtml = getSeparatorHtml(editor);
+      const shouldSplitBlock$1 = () => shouldSplitBlock(editor);
+      const pageBreakSeparatorRegExp = new RegExp(separatorHtml.replace(/[\?\.\*\[\]\(\)\{\}\+\^\$\:]/g, a => {
+        return '\\' + a;
+      }), 'gi');
+      editor.on('BeforeSetContent', e => {
+        e.content = e.content.replace(pageBreakSeparatorRegExp, getPlaceholderHtml(shouldSplitBlock$1()));
+      });
+      editor.on('PreInit', () => {
+        editor.serializer.addNodeFilter('img', nodes => {
+          let i = nodes.length, node, className;
+          while (i--) {
+            node = nodes[i];
+            className = node.attr('class');
+            if (className && className.indexOf(pageBreakClass) !== -1) {
+              const parentNode = node.parent;
+              if (parentNode && editor.schema.getBlockElements()[parentNode.name] && shouldSplitBlock$1()) {
+                parentNode.type = 3;
+                parentNode.value = separatorHtml;
+                parentNode.raw = true;
+                node.remove();
+                continue;
+              }
+              node.type = 3;
+              node.value = separatorHtml;
+              node.raw = true;
+            }
+          }
+        });
+      });
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mcePageBreak', () => {
+        editor.insertContent(getPlaceholderHtml(shouldSplitBlock(editor)));
+      });
+    };
+
+    const setup = editor => {
+      editor.on('ResolveName', e => {
+        if (e.target.nodeName === 'IMG' && editor.dom.hasClass(e.target, pageBreakClass)) {
+          e.name = 'pagebreak';
+        }
+      });
+    };
+
+    const onSetupEditable = editor => api => {
+      const nodeChanged = () => {
+        api.setEnabled(editor.selection.isEditable());
+      };
+      editor.on('NodeChange', nodeChanged);
+      nodeChanged();
+      return () => {
+        editor.off('NodeChange', nodeChanged);
+      };
+    };
+    const register = editor => {
+      const onAction = () => editor.execCommand('mcePageBreak');
+      editor.ui.registry.addButton('pagebreak', {
+        icon: 'page-break',
+        tooltip: 'Page break',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+      editor.ui.registry.addMenuItem('pagebreak', {
+        text: 'Page break',
+        icon: 'page-break',
+        onAction,
+        onSetup: onSetupEditable(editor)
+      });
+    };
+
+    var Plugin = () => {
+      global$1.add('pagebreak', editor => {
+        register$2(editor);
+        register$1(editor);
+        register(editor);
+        setup$1(editor);
+        setup(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
     const isSimpleType = type => value => typeof value === type;
     const isBoolean = isSimpleType('boolean');
     const isNumber = isSimpleType('number');
@@ -48639,124 +48757,6 @@ tinymce.IconManager.add('default', {
 (function () {
     'use strict';
 
-    var global$1 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    var global = tinymce.util.Tools.resolve('tinymce.Env');
-
-    const option = name => editor => editor.options.get(name);
-    const register$2 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('pagebreak_separator', {
-        processor: 'string',
-        default: '<!-- pagebreak -->'
-      });
-      registerOption('pagebreak_split_block', {
-        processor: 'boolean',
-        default: false
-      });
-    };
-    const getSeparatorHtml = option('pagebreak_separator');
-    const shouldSplitBlock = option('pagebreak_split_block');
-
-    const pageBreakClass = 'mce-pagebreak';
-    const getPlaceholderHtml = shouldSplitBlock => {
-      const html = `<img src="${ global.transparentSrc }" class="${ pageBreakClass }" data-mce-resize="false" data-mce-placeholder />`;
-      return shouldSplitBlock ? `<p>${ html }</p>` : html;
-    };
-    const setup$1 = editor => {
-      const separatorHtml = getSeparatorHtml(editor);
-      const shouldSplitBlock$1 = () => shouldSplitBlock(editor);
-      const pageBreakSeparatorRegExp = new RegExp(separatorHtml.replace(/[\?\.\*\[\]\(\)\{\}\+\^\$\:]/g, a => {
-        return '\\' + a;
-      }), 'gi');
-      editor.on('BeforeSetContent', e => {
-        e.content = e.content.replace(pageBreakSeparatorRegExp, getPlaceholderHtml(shouldSplitBlock$1()));
-      });
-      editor.on('PreInit', () => {
-        editor.serializer.addNodeFilter('img', nodes => {
-          let i = nodes.length, node, className;
-          while (i--) {
-            node = nodes[i];
-            className = node.attr('class');
-            if (className && className.indexOf(pageBreakClass) !== -1) {
-              const parentNode = node.parent;
-              if (parentNode && editor.schema.getBlockElements()[parentNode.name] && shouldSplitBlock$1()) {
-                parentNode.type = 3;
-                parentNode.value = separatorHtml;
-                parentNode.raw = true;
-                node.remove();
-                continue;
-              }
-              node.type = 3;
-              node.value = separatorHtml;
-              node.raw = true;
-            }
-          }
-        });
-      });
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mcePageBreak', () => {
-        editor.insertContent(getPlaceholderHtml(shouldSplitBlock(editor)));
-      });
-    };
-
-    const setup = editor => {
-      editor.on('ResolveName', e => {
-        if (e.target.nodeName === 'IMG' && editor.dom.hasClass(e.target, pageBreakClass)) {
-          e.name = 'pagebreak';
-        }
-      });
-    };
-
-    const onSetupEditable = editor => api => {
-      const nodeChanged = () => {
-        api.setEnabled(editor.selection.isEditable());
-      };
-      editor.on('NodeChange', nodeChanged);
-      nodeChanged();
-      return () => {
-        editor.off('NodeChange', nodeChanged);
-      };
-    };
-    const register = editor => {
-      const onAction = () => editor.execCommand('mcePageBreak');
-      editor.ui.registry.addButton('pagebreak', {
-        icon: 'page-break',
-        tooltip: 'Page break',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-      editor.ui.registry.addMenuItem('pagebreak', {
-        text: 'Page break',
-        icon: 'page-break',
-        onAction,
-        onSetup: onSetupEditable(editor)
-      });
-    };
-
-    var Plugin = () => {
-      global$1.add('pagebreak', editor => {
-        register$2(editor);
-        register$1(editor);
-        register(editor);
-        setup$1(editor);
-        setup(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
     var global$2 = tinymce.util.Tools.resolve('tinymce.PluginManager');
 
     var global$1 = tinymce.util.Tools.resolve('tinymce.Env');
@@ -48843,6 +48843,126 @@ tinymce.IconManager.add('default', {
       global$2.add('preview', editor => {
         register$1(editor);
         register(editor);
+      });
+    };
+
+    Plugin();
+
+})();
+
+/**
+ * TinyMCE version 7.5.1 (TBD)
+ */
+
+(function () {
+    'use strict';
+
+    var global$2 = tinymce.util.Tools.resolve('tinymce.PluginManager');
+
+    const isSimpleType = type => value => typeof value === type;
+    const isFunction = isSimpleType('function');
+
+    var global$1 = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
+
+    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
+
+    const option = name => editor => editor.options.get(name);
+    const register$2 = editor => {
+      const registerOption = editor.options.register;
+      registerOption('save_enablewhendirty', {
+        processor: 'boolean',
+        default: true
+      });
+      registerOption('save_onsavecallback', { processor: 'function' });
+      registerOption('save_oncancelcallback', { processor: 'function' });
+    };
+    const enableWhenDirty = option('save_enablewhendirty');
+    const getOnSaveCallback = option('save_onsavecallback');
+    const getOnCancelCallback = option('save_oncancelcallback');
+
+    const displayErrorMessage = (editor, message) => {
+      editor.notificationManager.open({
+        text: message,
+        type: 'error'
+      });
+    };
+    const save = editor => {
+      const formObj = global$1.DOM.getParent(editor.id, 'form');
+      if (enableWhenDirty(editor) && !editor.isDirty()) {
+        return;
+      }
+      editor.save();
+      const onSaveCallback = getOnSaveCallback(editor);
+      if (isFunction(onSaveCallback)) {
+        onSaveCallback.call(editor, editor);
+        editor.nodeChanged();
+        return;
+      }
+      if (formObj) {
+        editor.setDirty(false);
+        if (!formObj.onsubmit || formObj.onsubmit()) {
+          if (typeof formObj.submit === 'function') {
+            formObj.submit();
+          } else {
+            displayErrorMessage(editor, 'Error: Form submit field collision.');
+          }
+        }
+        editor.nodeChanged();
+      } else {
+        displayErrorMessage(editor, 'Error: No form element found.');
+      }
+    };
+    const cancel = editor => {
+      const h = global.trim(editor.startContent);
+      const onCancelCallback = getOnCancelCallback(editor);
+      if (isFunction(onCancelCallback)) {
+        onCancelCallback.call(editor, editor);
+        return;
+      }
+      editor.resetContent(h);
+    };
+
+    const register$1 = editor => {
+      editor.addCommand('mceSave', () => {
+        save(editor);
+      });
+      editor.addCommand('mceCancel', () => {
+        cancel(editor);
+      });
+    };
+
+    const stateToggle = editor => api => {
+      const handler = () => {
+        api.setEnabled(!enableWhenDirty(editor) || editor.isDirty());
+      };
+      handler();
+      editor.on('NodeChange dirty', handler);
+      return () => editor.off('NodeChange dirty', handler);
+    };
+    const register = editor => {
+      editor.ui.registry.addButton('save', {
+        icon: 'save',
+        tooltip: 'Save',
+        enabled: false,
+        onAction: () => editor.execCommand('mceSave'),
+        onSetup: stateToggle(editor),
+        shortcut: 'Meta+S'
+      });
+      editor.ui.registry.addButton('cancel', {
+        icon: 'cancel',
+        tooltip: 'Cancel',
+        enabled: false,
+        onAction: () => editor.execCommand('mceCancel'),
+        onSetup: stateToggle(editor)
+      });
+      editor.addShortcut('Meta+S', '', 'mceSave');
+    };
+
+    var Plugin = () => {
+      global$2.add('save', editor => {
+        register$2(editor);
+        register(editor);
+        register$1(editor);
       });
     };
 
@@ -49293,126 +49413,6 @@ tinymce.IconManager.add('default', {
         setupButtons(editor);
         addToEditor$1(editor);
         addToEditor(editor);
-      });
-    };
-
-    Plugin();
-
-})();
-
-/**
- * TinyMCE version 7.5.1 (TBD)
- */
-
-(function () {
-    'use strict';
-
-    var global$2 = tinymce.util.Tools.resolve('tinymce.PluginManager');
-
-    const isSimpleType = type => value => typeof value === type;
-    const isFunction = isSimpleType('function');
-
-    var global$1 = tinymce.util.Tools.resolve('tinymce.dom.DOMUtils');
-
-    var global = tinymce.util.Tools.resolve('tinymce.util.Tools');
-
-    const option = name => editor => editor.options.get(name);
-    const register$2 = editor => {
-      const registerOption = editor.options.register;
-      registerOption('save_enablewhendirty', {
-        processor: 'boolean',
-        default: true
-      });
-      registerOption('save_onsavecallback', { processor: 'function' });
-      registerOption('save_oncancelcallback', { processor: 'function' });
-    };
-    const enableWhenDirty = option('save_enablewhendirty');
-    const getOnSaveCallback = option('save_onsavecallback');
-    const getOnCancelCallback = option('save_oncancelcallback');
-
-    const displayErrorMessage = (editor, message) => {
-      editor.notificationManager.open({
-        text: message,
-        type: 'error'
-      });
-    };
-    const save = editor => {
-      const formObj = global$1.DOM.getParent(editor.id, 'form');
-      if (enableWhenDirty(editor) && !editor.isDirty()) {
-        return;
-      }
-      editor.save();
-      const onSaveCallback = getOnSaveCallback(editor);
-      if (isFunction(onSaveCallback)) {
-        onSaveCallback.call(editor, editor);
-        editor.nodeChanged();
-        return;
-      }
-      if (formObj) {
-        editor.setDirty(false);
-        if (!formObj.onsubmit || formObj.onsubmit()) {
-          if (typeof formObj.submit === 'function') {
-            formObj.submit();
-          } else {
-            displayErrorMessage(editor, 'Error: Form submit field collision.');
-          }
-        }
-        editor.nodeChanged();
-      } else {
-        displayErrorMessage(editor, 'Error: No form element found.');
-      }
-    };
-    const cancel = editor => {
-      const h = global.trim(editor.startContent);
-      const onCancelCallback = getOnCancelCallback(editor);
-      if (isFunction(onCancelCallback)) {
-        onCancelCallback.call(editor, editor);
-        return;
-      }
-      editor.resetContent(h);
-    };
-
-    const register$1 = editor => {
-      editor.addCommand('mceSave', () => {
-        save(editor);
-      });
-      editor.addCommand('mceCancel', () => {
-        cancel(editor);
-      });
-    };
-
-    const stateToggle = editor => api => {
-      const handler = () => {
-        api.setEnabled(!enableWhenDirty(editor) || editor.isDirty());
-      };
-      handler();
-      editor.on('NodeChange dirty', handler);
-      return () => editor.off('NodeChange dirty', handler);
-    };
-    const register = editor => {
-      editor.ui.registry.addButton('save', {
-        icon: 'save',
-        tooltip: 'Save',
-        enabled: false,
-        onAction: () => editor.execCommand('mceSave'),
-        onSetup: stateToggle(editor),
-        shortcut: 'Meta+S'
-      });
-      editor.ui.registry.addButton('cancel', {
-        icon: 'cancel',
-        tooltip: 'Cancel',
-        enabled: false,
-        onAction: () => editor.execCommand('mceCancel'),
-        onSetup: stateToggle(editor)
-      });
-      editor.addShortcut('Meta+S', '', 'mceSave');
-    };
-
-    var Plugin = () => {
-      global$2.add('save', editor => {
-        register$2(editor);
-        register(editor);
-        register$1(editor);
       });
     };
 

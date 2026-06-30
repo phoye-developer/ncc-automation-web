@@ -222,7 +222,7 @@ var KTNCSSupervisorDashboards = function () {
     }
 
     function requestStatsFilterActivation(reason, onComplete) {
-        var callback = typeof onComplete === "function" ? onComplete : function () {};
+        var callback = typeof onComplete === "function" ? onComplete : function () { };
 
         if (!state.session || !state.session.cookies) {
             logWarn("Skipping stats-filter activation because session context is missing.", {
@@ -776,7 +776,7 @@ var KTNCSSupervisorDashboards = function () {
                 active: !!list.active,
                 totalInList: Number(list.totalInList || 0),
                 completed: Number(list.completed || 0),
-                    percentageDone: normalizeRatio(list.percentageDone),
+                percentageDone: normalizeRatio(list.percentageDone),
                 callbacks: Number(list.callbacks || 0),
                 callbacksNow: Number(list.callbacksNow || 0),
                 notDialed: Number(list.notDialed || 0),
