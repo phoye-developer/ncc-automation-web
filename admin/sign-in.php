@@ -37,6 +37,7 @@ Contact: phoye@nextiva.com
         // Check if cookies exist
         let nccLocation = "";
         let nccToken = "";
+        let nccUserId = "";
         let tenantId = "";
         let username = "";
         let userProfile = "";
@@ -46,6 +47,8 @@ Contact: phoye@nextiva.com
                 nccLocation = cookie.substring(12);
             } else if (cookie.startsWith("nccToken=")) {
                 nccToken = cookie.substring(9);
+            } else if (cookie.startsWith("nccUserId=")) {
+                nccUserId = cookie.substring(10);
             } else if (cookie.startsWith("tenantId=")) {
                 tenantId = cookie.substring(9);
             } else if (cookie.startsWith("username=")) {
@@ -82,9 +85,16 @@ Contact: phoye@nextiva.com
 
         document.cookie = "nccLocation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "nccToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "nccUserId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "tenantId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "userProfile=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+        try {
+            sessionStorage.clear();
+        } catch (error) {
+            // Ignore storage clearing failures on logout.
+        }
     </script>
 </head>
 <!--end::Head-->
@@ -152,7 +162,7 @@ Contact: phoye@nextiva.com
                     <div class="d-flex flex-center flex-column flex-column-fluid px-lg-10 pb-15 pb-lg-20">
                         <!--begin::Form-->
                         <form class="form w-100" novalidate="novalidate" id="kt_sign_in_form"
-                            data-kt-redirect-url="index.php" action="#">
+                            data-kt-redirect-url="index.php" action="#" method="post">
                             <!--begin::Heading-->
                             <div class="text-center mb-11">
                                 <!--begin::Title-->

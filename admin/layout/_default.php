@@ -18,7 +18,7 @@ $page = (isset($_GET["page"])) ? $_GET["page"] : false;
                     if ($page && file_exists("pages/$page.php")) {
                         include("pages/$page.php");
                     } else {
-                        include("layout/partials/_content.php");
+                        include("pages/supervisor_overview.php");
                     }
                     ?>
                 </div>

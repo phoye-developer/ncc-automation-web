@@ -43,6 +43,7 @@ Contact: phoye@nextiva.com
         // Check if cookies exist
         let nccLocation = "";
         let nccToken = "";
+        let nccUserId = "";
         let tenantId = "";
         let username = "";
         let userProfile = "";
@@ -52,6 +53,8 @@ Contact: phoye@nextiva.com
                 nccLocation = cookie.substring(12);
             } else if (cookie.startsWith("nccToken=")) {
                 nccToken = cookie.substring(9);
+            } else if (cookie.startsWith("nccUserId=")) {
+                nccUserId = cookie.substring(10);
             } else if (cookie.startsWith("tenantId=")) {
                 tenantId = cookie.substring(9);
             } else if (cookie.startsWith("username=")) {
@@ -71,20 +74,32 @@ Contact: phoye@nextiva.com
         }
 
         setInterval(() => {
-            let success = false;
+            let currentNccLocation = "";
+            let currentNccToken = "";
+            let currentTenantId = "";
+            let currentUsername = "";
+            let currentUserProfile = "";
             const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
             cookies.forEach(cookie => {
-                if (
-                    cookie.startsWith("nccLocation=") ||
-                    cookie.startsWith("nccToken=") ||
-                    cookie.startsWith("tenantId") ||
-                    cookie.startsWith("username=") ||
-                    cookie.startsWith("userProfile=")
-                ) {
-                    success = true;
+                if (cookie.startsWith("nccLocation=")) {
+                    currentNccLocation = cookie.substring(12);
+                } else if (cookie.startsWith("nccToken=")) {
+                    currentNccToken = cookie.substring(9);
+                } else if (cookie.startsWith("tenantId=")) {
+                    currentTenantId = cookie.substring(9);
+                } else if (cookie.startsWith("username=")) {
+                    currentUsername = cookie.substring(9);
+                } else if (cookie.startsWith("userProfile=")) {
+                    currentUserProfile = cookie.substring(12);
                 }
             });
-            if (!success) {
+            if (
+                currentNccLocation === "" ||
+                currentNccToken === "" ||
+                currentTenantId === "" ||
+                currentUsername === "" ||
+                currentUserProfile === ""
+            ) {
                 window.location.href = "sign-in.php";
             }
         }, 5000);
@@ -124,6 +139,7 @@ Contact: phoye@nextiva.com
     <script src="assets/js/widgets.bundle.js"></script>
     <script src="assets/js/custom/widgets.js"></script>
     <script src="assets/js/custom/apps/chat/chat.js"></script>
+    <script src="assets/js/custom/ncc-supervisor-dashboards.js"></script>
     <script src="assets/js/custom/utilities/modals/upgrade-plan.js"></script>
     <script src="assets/js/custom/utilities/modals/users-search.js"></script>
     <script src="assets/plugins/custom/datatables/datatables.bundle.js"></script>
