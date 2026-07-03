@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 Author: Nextiva, Inc.
-Product Name: Nextiva Automation Tool Version: 1.3.0
+Product Name: Nextiva Integration Tool Version: 1.4.0
 Website: https://www.nextiva.com
 Contact: phoye@nextiva.com
 -->
@@ -9,16 +9,16 @@ Contact: phoye@nextiva.com
 <!--begin::Head-->
 
 <head>
-    <title>Nextiva Automation Tool</title>
+    <title>Nextiva Integration Tool</title>
     <meta charset="utf-8" />
     <meta name="description" content="A web-based application for provisioning Nextiva." />
     <meta name="keywords" content="Nextiva, contact center, provisioning" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="Nextiva Automation Tool" />
+    <meta property="og:title" content="Nextiva Integration Tool" />
     <meta property="og:url" content="https://nextiva.com" />
-    <meta property="og:site_name" content="Nextiva Automation Tool" />
+    <meta property="og:site_name" content="Nextiva Integration Tool" />
     <link rel="canonical" href="https://enterprise-demos.com/admin/?page=index" />
     <link rel="shortcut icon" href="assets/media/logos/favicon.ico" />
     <!--begin::Fonts(mandatory for all pages)-->
@@ -43,43 +43,63 @@ Contact: phoye@nextiva.com
         // Check if cookies exist
         let nccLocation = "";
         let nccToken = "";
+        let nccUserId = "";
         let tenantId = "";
         let username = "";
+        let userProfile = "";
         const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
         cookies.forEach(cookie => {
             if (cookie.startsWith("nccLocation=")) {
                 nccLocation = cookie.substring(12);
             } else if (cookie.startsWith("nccToken=")) {
                 nccToken = cookie.substring(9);
+            } else if (cookie.startsWith("nccUserId=")) {
+                nccUserId = cookie.substring(10);
             } else if (cookie.startsWith("tenantId=")) {
                 tenantId = cookie.substring(9);
             } else if (cookie.startsWith("username=")) {
                 username = cookie.substring(9);
+            } else if (cookie.startsWith("userProfile=")) {
+                userProfile = cookie.substring(12);
             }
         });
         if (
             nccLocation === "" ||
             nccToken === "" ||
             tenantId === "" ||
-            username === ""
+            username === "" ||
+            userProfile === ""
         ) {
             window.location.href = "sign-in.php";
         }
 
         setInterval(() => {
-            let success = false;
+            let currentNccLocation = "";
+            let currentNccToken = "";
+            let currentTenantId = "";
+            let currentUsername = "";
+            let currentUserProfile = "";
             const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
             cookies.forEach(cookie => {
-                if (
-                    cookie.startsWith("nccLocation=") ||
-                    cookie.startsWith("nccToken=") ||
-                    cookie.startsWith("tenantId") ||
-                    cookie.startsWith("username=")
-                ) {
-                    success = true;
+                if (cookie.startsWith("nccLocation=")) {
+                    currentNccLocation = cookie.substring(12);
+                } else if (cookie.startsWith("nccToken=")) {
+                    currentNccToken = cookie.substring(9);
+                } else if (cookie.startsWith("tenantId=")) {
+                    currentTenantId = cookie.substring(9);
+                } else if (cookie.startsWith("username=")) {
+                    currentUsername = cookie.substring(9);
+                } else if (cookie.startsWith("userProfile=")) {
+                    currentUserProfile = cookie.substring(12);
                 }
             });
-            if (!success) {
+            if (
+                currentNccLocation === "" ||
+                currentNccToken === "" ||
+                currentTenantId === "" ||
+                currentUsername === "" ||
+                currentUserProfile === ""
+            ) {
                 window.location.href = "sign-in.php";
             }
         }, 5000);
@@ -119,6 +139,7 @@ Contact: phoye@nextiva.com
     <script src="assets/js/widgets.bundle.js"></script>
     <script src="assets/js/custom/widgets.js"></script>
     <script src="assets/js/custom/apps/chat/chat.js"></script>
+    <script src="assets/js/custom/ncc-supervisor-dashboards.js"></script>
     <script src="assets/js/custom/utilities/modals/upgrade-plan.js"></script>
     <script src="assets/js/custom/utilities/modals/users-search.js"></script>
     <script src="assets/plugins/custom/datatables/datatables.bundle.js"></script>

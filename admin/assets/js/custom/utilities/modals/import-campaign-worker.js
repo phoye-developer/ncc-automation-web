@@ -1,6 +1,5 @@
 importScripts("inc/config-dispositions.js");
 importScripts("inc/config-queues.js");
-importScripts("inc/datadog.js");
 importScripts("inc/ncc-business-events.js");
 importScripts("inc/ncc-campaign-agent-scripts.js");
 importScripts("inc/ncc-campaign-dial-plans.js");
@@ -116,17 +115,6 @@ onmessage = (event) => {
     // ==============================
 
     if (action == "review") {
-
-        postEvent(
-            "info",
-            nccLocation,
-            nccToken,
-            "normal",
-            "importcampaign",
-            `Review of one or more campaigns started.`,
-            "Review Started",
-            username
-        );
 
         // Business events
         if ("businessEvents" in importData) {
@@ -1737,30 +1725,6 @@ onmessage = (event) => {
             postMessage(`[INFO] No existing objects will be updated as a result of this import.`);
         }
 
-        if (fileIsValid) {
-            postEvent(
-                "success",
-                nccLocation,
-                nccToken,
-                "normal",
-                "importcampaign",
-                `Review of one or more campaigns completed.`,
-                "Review Completed",
-                username
-            );
-        } else {
-            postEvent(
-                "error",
-                nccLocation,
-                nccToken,
-                "normal",
-                "importcampaign",
-                `Review of one or more campaigns failed.`,
-                "Review Failed",
-                username
-            );
-        }
-
         // End Review
         postMessage({
             "action": "review",
@@ -1775,17 +1739,6 @@ onmessage = (event) => {
     // ==============================
 
     if (action == "submit") {
-
-        postEvent(
-            "info",
-            nccLocation,
-            nccToken,
-            "normal",
-            "importcampaign",
-            `Import of one or more campaigns started.`,
-            "Import Started",
-            username
-        );
 
         // Update IDs
         updateNestedValues(importData, JSON.parse(updatedIds));
@@ -6720,30 +6673,6 @@ onmessage = (event) => {
                     });
                 }
             });
-        }
-
-        if (errorMessage === "") {
-            postEvent(
-                "success",
-                nccLocation,
-                nccToken,
-                "normal",
-                "importcampaign",
-                `Import of one or more campaigns completed.`,
-                "Import Completed",
-                username
-            );
-        } else {
-            postEvent(
-                "warning",
-                nccLocation,
-                nccToken,
-                "normal",
-                "importcampaign",
-                `Import of one or more campaigns completed, but with errors.`,
-                "Import Completed",
-                username
-            );
         }
 
         // End import

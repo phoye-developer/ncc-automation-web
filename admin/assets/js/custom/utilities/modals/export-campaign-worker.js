@@ -1,6 +1,5 @@
 importScripts("inc/config-dispositions.js");
 importScripts("inc/config-queues.js");
-importScripts("inc/datadog.js");
 importScripts("inc/ncc-business-events.js");
 importScripts("inc/ncc-campaign-goals.js");
 importScripts("inc/ncc-campaign-scripts.js");
@@ -177,17 +176,6 @@ onmessage = (event) => {
 
                     // Check if campaign found
                     if (Object.keys(campaign).length > 0) {
-
-                        postEvent(
-                            "info",
-                            nccLocation,
-                            nccToken,
-                            "normal",
-                            "exportcampaign",
-                            `Export of campaign ${campaign.name} started.`,
-                            "Export Campaign Started",
-                            username
-                        );
 
                         // Add campaign to config
                         config.campaigns.push(campaign);
@@ -578,16 +566,6 @@ onmessage = (event) => {
                             processWhatsAppTemplate(campaign.whatsAppTemplateId);
                         }
 
-                        postEvent(
-                            "success",
-                            nccLocation,
-                            nccToken,
-                            "normal",
-                            "exportcampaign",
-                            `Export of campaign ${campaign.name} completed.`,
-                            "Export Campaign Completed",
-                            username
-                        );
                     } else {
                         postMessage(`[ERROR] Campaign with ID "${campaignId}" not found.`);
                     }
@@ -611,16 +589,6 @@ onmessage = (event) => {
             config.reports.push(report);
             postMessage(`[INFO] Report "${report.name}" found.`);
         } else {
-            postEvent(
-                "error",
-                nccLocation,
-                nccToken,
-                "normal",
-                "exportcampaign",
-                `Report with ID ${reportId} not found.`,
-                "Export Campaign Error",
-                username
-            );
             postMessage(`[ERROR] Report with ID "${reportId}" not found.`);
         }
     });
@@ -652,16 +620,6 @@ onmessage = (event) => {
                 });
             }
         } else {
-            postEvent(
-                "error",
-                nccLocation,
-                nccToken,
-                "normal",
-                "exportcampaign",
-                `Home tab with ID ${homeTabId} not found.`,
-                "Export Campaign Error",
-                username
-            );
             postMessage(`[ERROR] Home tab with ID "${homeTabId}" not found.`);
         }
     });

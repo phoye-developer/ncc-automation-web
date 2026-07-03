@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
 Author: Nextiva, Inc.
-Product Name: Nextiva Automation Tool Version: 1.3.0
+Product Name: Nextiva Integration Tool Version: 1.3.0
 Website: https://www.nextiva.com
 Contact: phoye@nextiva.com
 -->
@@ -9,16 +9,16 @@ Contact: phoye@nextiva.com
 <!--begin::Head-->
 
 <head>
-    <title>Nextiva Automation Tool</title>
+    <title>Nextiva Integration Tool</title>
     <meta charset="utf-8" />
     <meta name="description" content="A web-based application for provisioning Nextiva." />
     <meta name="keywords" content="Nextiva, contact center, provisioning" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:type" content="article" />
-    <meta property="og:title" content="Nextiva Automation Tool" />
+    <meta property="og:title" content="Nextiva Integration Tool" />
     <meta property="og:url" content="https://nextiva.com" />
-    <meta property="og:site_name" content="Nextiva Automation Tool" />
+    <meta property="og:site_name" content="Nextiva Integration Tool" />
     <link rel="canonical" href="https://enterprise-demos.com/admin/sign-in.php" />
     <link rel="shortcut icon" href="assets/media/logos/favicon.ico" />
     <!--begin::Fonts(mandatory for all pages)-->
@@ -34,10 +34,67 @@ Contact: phoye@nextiva.com
             window.top.location.replace(window.self.location.href);
         }
 
+        // Check if cookies exist
+        let nccLocation = "";
+        let nccToken = "";
+        let nccUserId = "";
+        let tenantId = "";
+        let username = "";
+        let userProfile = "";
+        const cookies = decodeURIComponent(document.cookie).split(";").map(cookie => cookie.trim());
+        cookies.forEach(cookie => {
+            if (cookie.startsWith("nccLocation=")) {
+                nccLocation = cookie.substring(12);
+            } else if (cookie.startsWith("nccToken=")) {
+                nccToken = cookie.substring(9);
+            } else if (cookie.startsWith("nccUserId=")) {
+                nccUserId = cookie.substring(10);
+            } else if (cookie.startsWith("tenantId=")) {
+                tenantId = cookie.substring(9);
+            } else if (cookie.startsWith("username=")) {
+                username = cookie.substring(9);
+            } else if (cookie.startsWith("userProfile=")) {
+                userProfile = cookie.substring(12);
+            }
+        });
+
+        if (
+            nccLocation &&
+            nccToken
+        ) {
+            let xhr = new XMLHttpRequest();
+            xhr.withCredentials = true;
+
+            xhr.open("POST", `${nccLocation}/users/api/logout`);
+            xhr.setRequestHeader("Authorization", nccToken);
+
+            try {
+                xhr.send();
+            } catch (error) {
+                Swal.fire({
+                    text: "Sorry, something went wrong logging you out.",
+                    icon: "error",
+                    buttonsStyling: false,
+                    confirmButtonText: "Ok, got it!",
+                    customClass: {
+                        confirmButton: "btn btn-primary"
+                    }
+                });
+            }
+        }
+
         document.cookie = "nccLocation=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "nccToken=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "nccUserId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "tenantId=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         document.cookie = "username=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        document.cookie = "userProfile=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+
+        try {
+            sessionStorage.clear();
+        } catch (error) {
+            // Ignore storage clearing failures on logout.
+        }
     </script>
 </head>
 <!--end::Head-->
@@ -90,7 +147,7 @@ Contact: phoye@nextiva.com
                     </a>
                     <!--end::Logo-->
                     <!--begin::Title-->
-                    <h2 class="text-white fw-normal m-0">Nextiva Automation Tool</h2>
+                    <h2 class="text-white fw-normal m-0">Nextiva Integration Tool</h2>
                     <!--end::Title-->
                 </div>
                 <!--begin::Aside-->
@@ -105,14 +162,14 @@ Contact: phoye@nextiva.com
                     <div class="d-flex flex-center flex-column flex-column-fluid px-lg-10 pb-15 pb-lg-20">
                         <!--begin::Form-->
                         <form class="form w-100" novalidate="novalidate" id="kt_sign_in_form"
-                            data-kt-redirect-url="index.php" action="#">
+                            data-kt-redirect-url="index.php" action="#" method="post">
                             <!--begin::Heading-->
                             <div class="text-center mb-11">
                                 <!--begin::Title-->
                                 <h1 class="text-gray-900 fw-bolder mb-3">Sign In</h1>
                                 <!--end::Title-->
                                 <!--begin::Subtitle-->
-                                <div class="text-gray-500 fw-semibold fs-6">Please use administrator credentials.</div>
+                                <div class="text-gray-500 fw-semibold fs-6">Please use Nextiva credentials.</div>
                                 <!--end::Subtitle=-->
                             </div>
                             <!--begin::Heading-->
